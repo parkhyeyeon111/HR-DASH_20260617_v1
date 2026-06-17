@@ -1498,6 +1498,19 @@ function BigCal({
     });
     return m;
   }, [tasks, calYear, calMonth]);
+  // 달력 '칸 안에서만' 동일 일정명(task) 중복 제거 (우측 To-Do 패널 selEvs 는 담당자별 전체 유지)
+  // 키를 정규화(앞뒤 공백 제거 + 연속 공백 1칸 + 대소문자 무시)하여, 보이지 않는 공백차이까지 같은 이름으로 처리
+  const normTask = t => String(t == null ? "" : t).trim().replace(/\s+/g, " ").toLowerCase();
+  const uniqByTask = arr => {
+    const seen = new Set();
+    const out = [];
+    (arr || []).forEach(e => {
+      const key = (e && e.task != null && normTask(e.task)) || ("__" + JSON.stringify(e));
+      if (!seen.has(key)) { seen.add(key); out.push(e); }
+    });
+    return out;
+  };
+  const isLeaveTask = e => /연차|휴가|반차/.test(String(e && e.task || ""));
   const selEvs = evMap[selDay] || [];
   const asgnList = useMemo(() => [...new Set(selEvs.map(t => t.asgn || "미지정"))], [selEvs]);
   useEffect(() => {
@@ -1587,6 +1600,7 @@ function BigCal({
     const isTd = isTod(d);
     const isSd = isSelDate(d) && !isSel;
     const hasEv = d && (evMap[d] || []).length > 0;
+    const dayEvs = d ? uniqByTask(evMap[d] || []) : []; // 칸 표시용: 동일 일정명 1건만
     let cls = "cal-cell";
     if (isSel) cls += " active";else if (isTd || isSd) cls += " today";
     if (hasEv) cls += " has-ev";
@@ -1605,27 +1619,30 @@ function BigCal({
         fontWeight: 700,
         color: isSel ? "#fff" : isTd ? "var(--sky-d)" : "var(--t2)"
       }
-    }, d), d && (evMap[d] || []).slice(0, 2).map((e, j) => React.createElement("div", {
-      key: j,
-      style: {
-        fontSize: 9,
-        borderRadius: 3,
-        padding: "1px 3px",
-        marginTop: 2,
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        textOverflow: "ellipsis",
-        background: isSel ? "rgba(255,255,255,.2)" : e.legal ? "#FEF2F2" : "var(--sky-l)",
-        color: isSel ? "#fff" : e.legal ? "#DC2626" : "var(--sky-d)",
-        fontWeight: 600
-      }
-    }, e.task.slice(0, 6))), d && (evMap[d] || []).length > 2 && React.createElement("div", {
+    }, d), d && dayEvs.slice(0, 2).map((e, j) => {
+      const leave = isLeaveTask(e); // 연차/휴가/반차 → 핑크 (법정 빨강보다 우선)
+      return React.createElement("div", {
+        key: j,
+        style: {
+          fontSize: 9,
+          borderRadius: 3,
+          padding: "1px 3px",
+          marginTop: 2,
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          textOverflow: "ellipsis",
+          background: isSel ? "rgba(255,255,255,.2)" : leave ? "#FDF2F8" : e.legal ? "#FEF2F2" : "var(--sky-l)",
+          color: isSel ? "#fff" : leave ? "#DB2777" : e.legal ? "#DC2626" : "var(--sky-d)",
+          fontWeight: 600
+        }
+      }, e.task);
+    }), d && dayEvs.length > 2 && React.createElement("div", {
       style: {
         fontSize: 9,
         color: "var(--t3)",
         marginTop: 1
       }
-    }, "+" + (evMap[d].length - 2)));
+    }, "+" + (dayEvs.length - 2)));
   })))), React.createElement("div", {
     className: "card",
     style: {
