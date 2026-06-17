@@ -5894,6 +5894,21 @@ async function driveFetchFileList(curYM) {
     return [];
   }
 }
+// 원본 파일 삭제 → Supabase Storage DELETE
+async function driveDeleteFile(curYM, fileName) {
+  const cfg = SheetDB.storage;
+  if (!cfg || !cfg.enabled || !cfg.url || !cfg.key) return false;
+  const folder = ymFolder(curYM);
+  try {
+    const res = await fetch(cfg.url + "/storage/v1/object/" + cfg.bucket + "/" + folder + "/" + encodeURIComponent(fileName), {
+      method: "DELETE",
+      headers: { "Authorization": "Bearer " + cfg.key, "apikey": cfg.key }
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
 const INS_LS_PREFIX = "hr_shine_4ins_";
 const INS_REASONS = ["전월반영", "차월반영", "중도퇴사정산", "직접입력"];
 const INS_TYPES = ["건강보험", "국민연금"];
@@ -6988,7 +7003,28 @@ function Page4Insurance({
           textDecoration: "none",
           whiteSpace: "nowrap"
         }
-      }, "\uC5F4\uAE30")) : React.createElement("div", {
+      }, "\uC5F4\uAE30"), React.createElement("button", {
+        onClick: async () => {
+          if (!confirm("이 원본 파일을 스토리지에서 삭제할까요?")) return;
+          const ok = await driveDeleteFile(curYM, f.name);
+          if (ok) {
+            driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
+          } else {
+            alert("삭제 실패. 버킷 권한(RLS delete) 또는 네트워크를 확인하세요.");
+          }
+        },
+        style: {
+          fontSize: 10,
+          padding: "4px 10px",
+          borderRadius: 7,
+          border: "1px solid #FCA5A5",
+          background: "#FEF2F2",
+          color: "#DC2626",
+          fontWeight: 600,
+          cursor: "pointer",
+          whiteSpace: "nowrap"
+        }
+      }, "\uC0AD\uC81C")) : React.createElement("div", {
         style: {
           flex: 1,
           fontSize: 11,
@@ -7139,7 +7175,23 @@ function Page4Insurance({
       fontSize: 10,
       color: "var(--t3)"
     }
-  }, cnt > 0 ? "재업로드 가능" : "(.xlsx, .xls)"), React.createElement("input", {
+  }, cnt > 0 ? "재업로드 가능" : "(.xlsx, .xls)"), label === "회사 급여대장" && React.createElement("div", {
+    style: {
+      marginTop: 4,
+      width: "100%",
+      fontSize: 9.5,
+      lineHeight: 1.6,
+      color: "#1D4ED8",
+      background: "#EFF6FF",
+      border: "1px solid #BFDBFE",
+      borderRadius: 8,
+      padding: "7px 9px",
+      textAlign: "left",
+      fontWeight: 600
+    }
+  }, React.createElement("span", {
+    style: { color: "#2563EB", fontWeight: 800 }
+  }, "※ 급여대장 필수 열 순서"), React.createElement("br", null), "A열 귀속년월 | B열 사번 | C열 이름 | D열 주민번호 | E열 국민연금 | F열 국민연금정산 | G열 건강보험 | H열 건강보험정산 | I열 요양보험 | J열 요양보험정산 | K열 사업부"), React.createElement("input", {
     type: "file",
     accept: ".xlsx,.xls",
     style: {
@@ -7209,77 +7261,7 @@ function Page4Insurance({
     strokeWidth: "1.5",
     strokeLinecap: "round",
     strokeLinejoin: "round"
-  })), type + " 양식"))), hasData && rawPub.length > 0 && React.createElement("div", {
-    style: {
-      marginTop: 6,
-      paddingTop: 10,
-      borderTop: "1px solid var(--border)",
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      flexWrap: "wrap"
-    }
-  }, React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      color: "var(--sky-deep)"
-    }
-  }, "\uC5C5\uB85C\uB4DC \uC6D0\uBCF8 \uB2E4\uC6B4\uB85C\uB4DC:"), React.createElement("button", {
-    onClick: downloadUploadedHealthGovExcel,
-    style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 5,
-      fontSize: 10,
-      padding: "5px 12px",
-      borderRadius: 7,
-      border: "1px solid #0EA5E940",
-      background: "#E0F2FE",
-      color: "#0369A1",
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit"
-    }
-  }, React.createElement("svg", {
-    width: "12",
-    height: "12",
-    viewBox: "0 0 14 14",
-    fill: "none"
-  }, React.createElement("path", {
-    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
-    stroke: "currentColor",
-    strokeWidth: "1.5",
-    strokeLinecap: "round",
-    strokeLinejoin: "round"
-  })), "\uAC74\uAC15 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("button", {
-    onClick: downloadUploadedPensionGovExcel,
-    style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 5,
-      fontSize: 10,
-      padding: "5px 12px",
-      borderRadius: 7,
-      border: "1px solid #8B5CF640",
-      background: "#F5F3FF",
-      color: "#6D28D9",
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit"
-    }
-  }, React.createElement("svg", {
-    width: "12",
-    height: "12",
-    viewBox: "0 0 14 14",
-    fill: "none"
-  }, React.createElement("path", {
-    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
-    stroke: "currentColor",
-    strokeWidth: "1.5",
-    strokeLinecap: "round",
-    strokeLinejoin: "round"
-  })), "\uC5F0\uAE08 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC")))), hasData && React.createElement("div", {
+  })), type + " 양식"))))), hasData && React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "repeat(4,1fr)",
