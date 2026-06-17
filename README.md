@@ -1,2 +1,8621 @@
-# HR-DASH_20260617_v1
--
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>HR SHINE DESK v16</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* 안전 진단 오버레이: 오류를 기록만 하고, 로드 후 일정 시간 지나도 화면이 비어 있을 때만 안내 표시 (정상 렌더를 절대 방해하지 않음) */
+(function(){
+  var lastErr="";
+  window.addEventListener("error",function(e){ var m=(e&&e.message)||(e&&e.error&&e.error.message); if(m&&m!=="Script error.")lastErr=m; });
+  window.addEventListener("unhandledrejection",function(e){ try{ if(e&&e.reason)lastErr=String(e.reason.message||e.reason); }catch(_){} });
+  function check(){
+    var r=document.getElementById("root");
+    if(!r||r.firstChild)return; // 이미 렌더됐으면 아무것도 하지 않음
+    var html;
+    if(typeof window.React==="undefined"||typeof window.ReactDOM==="undefined"){
+      html='<div style="font-size:18px;font-weight:700;color:#b45309;margin-bottom:10px">필수 라이브러리를 불러오지 못했습니다</div>'
+        +'React / Babel(cdnjs) 로딩이 차단된 것 같아요. 인터넷 연결 또는 사내 방화벽이 <b>cdnjs.cloudflare.com</b> 을 막는지 확인 후 새로고침(F5) 해주세요.';
+    }else{
+      html='<div style="font-size:16px;font-weight:700;margin-bottom:8px">화면이 아직 표시되지 않았습니다</div>'
+        +(lastErr?('<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;color:#991B1B;white-space:pre-wrap;margin:8px 0">'+lastErr+'</div>'):'')
+        +'잠시 후에도 빈 화면이면 새로고침(F5), 그래도 같으면 콘솔(F12 → Console)의 빨간 메시지를 캡처해 알려주세요.';
+    }
+    r.innerHTML='<div style="padding:28px;font-family:Noto Sans KR,sans-serif;color:#334155;max-width:760px;margin:40px auto;line-height:1.6">'+html+'</div>';
+  }
+  window.addEventListener("load",function(){ setTimeout(check,5000); });
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--sky:#0EA5E9;--sky-l:#E0F2FE;--sky-m:#BAE6FD;--sky-d:#0284C7;--sky-deep:#0C4A6E;
+--white:#fff;--bg:#F0F7FF;--s2:#F8FBFF;--border:#DBEAFE;--border2:#BFDBFE;
+--text:#0F172A;--t2:#475569;--t3:#94A3B8;
+--green:#10B981;--red:#EF4444;--amber:#F59E0B;--purple:#8B5CF6;--pink:#EC4899;--indigo:#6366F1;
+--r:12px;--rs:8px;
+--sh:0 1px 3px rgba(14,165,233,.08),0 4px 16px rgba(14,165,233,.06);
+--shm:0 4px 24px rgba(14,165,233,.12),0 1px 4px rgba(14,165,233,.08);
+}
+html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--sky-l)}
+::-webkit-scrollbar-thumb{background:var(--sky-m);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--sky)}
+.bw{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#CBD5E1}
+.bchrome{background:linear-gradient(180deg,#F1F5F9,#E2E8F0);border-bottom:1px solid #CBD5E1;padding:8px 12px 0;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.btb{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bdots{display:flex;gap:5px}
+.bd{width:11px;height:11px;border-radius:50%;cursor:pointer}
+.bd.r{background:#FF5F57;border:.5px solid #E0443E}
+.bd.y{background:#FEBC2E;border:.5px solid #D4A017}
+.bd.g{background:#28C840;border:.5px solid #1DAD2B}
+.btabs{display:flex;gap:2px}
+.btab{display:flex;align-items:center;gap:7px;padding:6px 16px 7px;background:#fff;border:1px solid #CBD5E1;border-bottom:none;border-radius:8px 8px 0 0;font-size:11.5px;font-weight:500;color:var(--t2)}
+.btab.active{color:var(--sky-d)}
+.baddr{display:flex;align-items:center;gap:8px;padding:4px 8px;margin:0 60px 8px;background:#fff;border:1px solid #CBD5E1;border-radius:20px;font-size:11px;color:var(--t3)}
+.bcontent{flex:1;overflow:hidden;background:var(--bg);border-top:2px solid #fff}
+.shell{display:flex;height:100%;overflow:hidden}
+.sidebar{width:220px;min-width:220px;background:var(--sky-deep);display:flex;flex-direction:column;overflow-y:auto}
+.sb-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--sky),#38BDF8);display:flex;align-items:center;justify-content:center;margin-bottom:10px;box-shadow:0 4px 12px rgba(14,165,233,.4)}
+.sb-logo-t{font-size:14px;font-weight:800;color:#fff;letter-spacing:-.02em}
+.sb-logo-s{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+.sb-sec{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:14px 18px 6px}
+.sb-nav{padding:6px 10px;flex:1}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.55);border:none;background:transparent;width:100%;text-align:left;font-family:inherit;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
+.nav-item.active{background:rgba(14,165,233,.3);color:#fff;font-weight:700;border-left:2px solid #38BDF8}
+.nav-badge{margin-left:auto;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:700;background:rgba(239,68,68,.85);color:#fff}
+.nav-badge.sky{background:rgba(14,165,233,.6)}
+.sb-footer{padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,.08)}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:54px;padding:0 20px;background:#fff;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 4px rgba(14,165,233,.08)}
+.pgcont{flex:1;overflow-y:auto;padding:16px}
+.card{background:#fff;border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#fff,#F8FBFF)}
+.card-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--sky-deep)}
+.card-icon{width:28px;height:28px;border-radius:8px;background:var(--sky-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--sky-m)}
+.card-body{padding:16px 18px}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.stat-card{background:#fff;border:1px solid var(--border2);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sky-d),var(--sky))}
+.stat-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.stat-value{font-size:28px;font-weight:800;color:var(--sky-d);letter-spacing:-.04em;line-height:1}
+.stat-sub{font-size:11px;color:var(--t3);margin-top:5px}
+.btn{display:inline-flex;align-items:center;gap:5px;font-family:inherit;cursor:pointer;border:none;border-radius:var(--rs);font-weight:600;transition:all .15s;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--sky-d),var(--sky));color:#fff;font-size:11.5px;padding:6px 14px;box-shadow:0 2px 8px rgba(14,165,233,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(14,165,233,.4)}
+.btn-ghost{background:transparent;color:var(--t2);border:1px solid var(--border2);font-size:11.5px;padding:6px 12px}
+.btn-ghost:hover{background:var(--sky-l);border-color:var(--sky-m);color:var(--sky-d)}
+.btn-secondary{background:var(--sky-l);color:var(--sky-d);border:1px solid var(--sky-m);font-size:11.5px;padding:6px 12px}
+.btn-secondary:hover{background:var(--sky-m)}
+.btn-danger{background:#FEF2F2;color:var(--red);border:1px solid #FECACA;font-size:11px;padding:5px 10px}
+.btn-sm{font-size:10.5px!important;padding:4px 10px!important}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid;white-space:nowrap}
+.bdg-blue{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE}
+.bdg-red{background:#FEF2F2;color:#DC2626;border-color:#FECACA}
+.bdg-green{background:#F0FDF4;color:#16A34A;border-color:#BBF7D0}
+.bdg-purple{background:#F5F3FF;color:#7C3AED;border-color:#DDD6FE}
+.bdg-pink{background:#FDF2F8;color:#BE185D;border-color:#FBCFE8}
+.bdg-amber{background:#FFFBEB;color:#D97706;border-color:#FDE68A}
+.bdg-sky{background:var(--sky-l);color:var(--sky-d);border-color:var(--sky-m)}
+.bdg-gray{background:#F8FAFC;color:#64748B;border-color:#E2E8F0}
+.cal-cell{cursor:pointer;border-radius:8px;transition:all .1s;padding:5px;min-height:56px;display:flex;flex-direction:column;border:1px solid transparent}
+.cal-cell:hover{background:var(--sky-l)}
+.cal-cell.active{background:var(--sky)!important;color:#fff}
+.cal-cell.today{background:var(--sky-l);border-color:var(--sky)}
+.cal-cell.has-ev::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:var(--sky);margin:2px auto 0}
+.cal-cell.active.has-ev::after{background:#fff}
+.xwrap{overflow:auto;border:1px solid #CBD5E1;border-radius:8px;max-height:480px}
+.xtbl{border-collapse:collapse;width:100%;font-size:12px;min-width:900px}
+.xtbl thead{position:sticky;top:0;z-index:2}
+.xcl{background:linear-gradient(180deg,#E2E8F0,#CBD5E1);color:#64748B;font-size:10px;font-weight:700;text-align:center;padding:4px 6px;border-right:1px solid #CBD5E1;border-bottom:2px solid #CBD5E1;letter-spacing:.06em;white-space:nowrap;font-family:'DM Mono',monospace}
+.xtbl tbody tr{transition:background .1s}
+.xtbl tbody tr:nth-child(even){background:#F8FBFF}
+.xtbl tbody tr:hover{background:#EFF6FF!important}
+.xtbl tbody tr.row-sel{background:#DBEAFE!important;outline:2px solid var(--sky) inset}
+.xtbl tbody tr.row-v2{background:#F0FDF4!important}
+.xtbl td{padding:7px 10px;border-bottom:1px solid #E8EEF5;border-right:1px solid #E8EEF5;white-space:nowrap;color:var(--text);vertical-align:middle}
+.xtbl td.rnum{background:linear-gradient(180deg,#F1F5F9,#E8EEF5);color:#94A3B8;font-size:10px;font-family:'DM Mono',monospace;text-align:center;font-weight:600;padding:7px 8px;min-width:36px;border-right:2px solid #CBD5E1}
+.xtbl td.mono{font-family:'DM Mono',monospace;font-size:11px}
+.xtbl td.amt{font-family:'DM Mono',monospace;font-weight:600;color:var(--sky-d)}
+.pbar{height:6px;background:var(--sky-l);border-radius:4px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:4px;transition:width .4s;background:linear-gradient(90deg,var(--sky-d),var(--sky))}
+.inp{width:100%;padding:8px 11px;border:1.5px solid var(--border2);border-radius:var(--rs);background:#fff;color:var(--text);font-family:inherit;font-size:12px;outline:none;transition:border .15s}
+.inp:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,.1)}
+.inp::placeholder{color:var(--t3)}
+.inp-lbl{font-size:10.5px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.modal-ov{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(12,74,110,.35);backdrop-filter:blur(4px)}
+.modal-box{background:#fff;border-radius:16px;box-shadow:var(--shm),0 0 0 1px var(--border2);max-height:90vh;overflow-y:auto}
+.modal-hd{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#fff,var(--sky-l))}
+.modal-title{font-size:14px;font-weight:800;color:var(--sky-deep)}
+.modal-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.modal-body{padding:18px 22px}
+.tab-bar{display:flex;gap:5px;flex-wrap:wrap}
+.tab-btn{padding:5px 13px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border2);background:#fff;color:var(--t3);font-family:inherit;transition:all .15s}
+.tab-btn.active{background:var(--sky-l);border-color:var(--sky);color:var(--sky-d)}
+.tab-btn:hover:not(.active){background:var(--bg)}
+.toast{position:fixed;bottom:20px;right:20px;z-index:200;background:var(--sky-deep);color:#fff;padding:10px 16px;border-radius:10px;font-size:12px;font-weight:600;box-shadow:var(--shm);animation:slidein .25s ease}
+@keyframes slidein{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+.fadein{animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cl-panel{width:300px;min-width:300px;background:#fff;border-left:2px solid var(--sky-m);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.cl-panel-hd{padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#fff,var(--sky-l));flex-shrink:0}
+.cl-panel-body{flex:1;overflow-y:auto;padding:12px 14px}
+.cl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;margin-bottom:5px;transition:background .12s}
+.cl-item:hover{background:var(--sky-l)}
+.cl-item.done-item{background:#F0FDF4;border-color:#BBF7D0}
+.row-click{cursor:pointer}
+select.inp option{background:white;color:var(--text)}
+
+
+.bdg-indigo{background:#EEF2FF;color:#4338CA;border-color:#C7D2FE}
+.bdg-sky{background:var(--sky-l);color:var(--sky-d);border-color:var(--sky-m)}
+
+
+.bdg-indigo{background:#EEF2FF;color:#4338CA;border-color:#C7D2FE}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef
+} = React;
+const API_URL = "https://script.google.com/macros/s/AKfycbzd8dkOgHBHcsauhB4H2ASU_mdJ9aSAS0IZi66kmwHaXy1QJq3sftoRyPjjxaqZamGjLw/exec";
+// [DEPRECATED] 공유 저장소는 Supabase 로 이전됨(아래 SheetDB 내부 SUPABASE_URL/KEY 사용). 이 상수는 더 이상 쓰이지 않음.
+const SHARED_API_URL = "https://script.google.com/macros/s/AKfycbzzX-VzggyDhiApcsQOpCOpclsdZfchHess10ZAAFKEauYEvlrp5XCgixwGzEi__Fv6/exec";
+const LS_KEY = "hr_v15";
+const GTMPL_KEY = "hr_v15_gtmpl";
+const ROUTINE_KEY = "hr_v15_routines";
+const TODAY = new Date();
+const todayStr = TODAY.toISOString().split('T')[0];
+const KOR_M = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+const MOVE_TYPES = ["입사", "퇴사", "육아휴직", "육아기간 단축근로", "출산휴가", "복직"];
+const ALL_STATUSES = ["입사", "퇴사", "복직", "육아휴직", "출산휴가", "육아기간 단축근로"];
+const DEPTS = ["HQ", "PA", "MT", "MS", "EN", "CC(EN)", "CC(DW)", "개발팀"];
+const CYCLE_OPTS = ["월간", "분기별", "반기별", "연간", "일회성"];
+const CYCLE_CLR = {
+  "월간": "#0EA5E9",
+  "분기별": "#8B5CF6",
+  "반기별": "#6366F1",
+  "연간": "#EC4899",
+  "일회성": "#64748B"
+};
+const uid = () => `id_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+const fmt = d => {
+  const dt = d instanceof Date ? d : new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+};
+const addD = (d, n) => {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+};
+const nxtM15 = d => {
+  const r = new Date(d);
+  r.setMonth(r.getMonth() + 1, 15);
+  return r;
+};
+const dday = d => {
+  const n = Math.ceil((new Date(d) - TODAY) / 86400000);
+  return n === 0 ? "D-Day" : n > 0 ? `D-${n}` : `D+${Math.abs(n)}`;
+};
+const nowIso = () => new Date().toISOString();
+const SheetDB = function () {
+  const MIRROR = "hr_shine_cloud_mirror_v2";
+  const STORE = {
+    team: null,
+    employees: null,
+    tasks: null,
+    ts: null,
+    routines: null,
+    memos: null,
+    gTmpl: null,
+    guide: null,
+    adminName: null,
+    cl: {},
+    ins: {}
+  };
+  let ready = false,
+    status = "idle";
+  const dirty = new Set();
+  const listeners = new Set();
+  const emit = s => {
+    status = s;
+    listeners.forEach(fn => {
+      try {
+        fn(s);
+      } catch (e) {}
+    });
+  };
+  const readMirror = () => {
+    try {
+      const s = localStorage.getItem(MIRROR);
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  };
+  const writeMirror = () => {
+    try {
+      localStorage.setItem(MIRROR, JSON.stringify(STORE));
+    } catch (e) {}
+  };
+  function applyState(d) {
+    if (!d || typeof d !== "object") return;
+    // 서버 값이 비었는데 로컬엔 내용이 있으면 → 로컬 유지 + 서버로 다시 올려 복구(heal).
+    //  → 일시적 빈값/유실로 데이터가 사라지지 않고, 복구분이 다른 사용자에게도 공유된다.
+    const healArr = (k) => {
+      const sv = d[k], cur = STORE[k];
+      if (!Array.isArray(sv) || dirty.has(k)) return;
+      if (sv.length === 0 && Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush(k, cur, k); return; }
+      STORE[k] = sv;
+    };
+    ["team", "employees", "tasks", "routines", "memos"].forEach(healArr);
+    const healObj = (k) => {
+      const sv = d[k], cur = STORE[k];
+      if (!(sv && typeof sv === "object" && !Array.isArray(sv)) || dirty.has(k)) return;
+      if (Object.keys(sv).length === 0 && cur && typeof cur === "object" && Object.keys(cur).length > 0) { if (ready) schedulePush(k, cur, k); return; }
+      STORE[k] = sv;
+    };
+    ["ts", "gTmpl"].forEach(healObj);
+    if (typeof d.guide === "string" && !dirty.has("guide")) STORE.guide = d.guide;
+    if (typeof d.adminName === "string" && d.adminName && !dirty.has("adminName")) STORE.adminName = d.adminName;
+    if (d.cl && typeof d.cl === "object") {
+      Object.keys(STORE.cl).forEach(key => {
+        if (!(key in d.cl) && !dirty.has("cl:" + key)) delete STORE.cl[key];
+      });
+      Object.keys(d.cl).forEach(key => {
+        if (dirty.has("cl:" + key)) return;
+        const sv = d.cl[key], cur = STORE.cl[key];
+        if (sv && typeof sv === "object" && Object.keys(sv).length === 0 && cur && typeof cur === "object" && Object.keys(cur).length > 0) { if (ready) schedulePush("cl:" + key, cur, "cl:" + key); return; }
+        STORE.cl[key] = sv;
+      });
+    }
+    if (d.ins && typeof d.ins === "object") {
+      Object.keys(STORE.ins).forEach(ym => {
+        if (!(ym in d.ins) && !dirty.has("ins:" + ym)) delete STORE.ins[ym];
+      });
+      Object.keys(d.ins).forEach(ym => {
+        if (dirty.has("ins:" + ym)) return;
+        const sv = d.ins[ym], cur = STORE.ins[ym];
+        if (sv && typeof sv === "object" && Object.keys(sv).length === 0 && cur && typeof cur === "object" && Object.keys(cur).length > 0) { if (ready) schedulePush("ins:" + ym, cur, "ins:" + ym); return; }
+        STORE.ins[ym] = sv;
+      });
+    }
+  }
+  /* ===== Supabase 연동 (Google Apps Script/시트 완전 대체) =====
+   * 아래 두 값을 본인 Supabase 프로젝트 값으로 교체하세요:
+   *   SUPABASE_URL      : Supabase 대시보드 → Project Settings → API → Project URL
+   *   SUPABASE_ANON_KEY : 같은 화면의 anon public key
+   * 테이블/권한(RLS) 설정 SQL 은 안내 메시지를 참고하세요. */
+  const SUPABASE_URL = "https://zaoccfqckkiglwmhfnsq.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_mSZj02MZkJjoPD1b0TOjzQ_Ya58dndO";
+  const SUPA_TABLE = "hr_store";
+  const SUPA_BUCKET = "hr_insurance_files"; // 4대보험 원본 파일용 Supabase Storage 버킷
+  const SUPA = (typeof window !== "undefined" && window.supabase && SUPABASE_URL.indexOf("YOUR_") < 0)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+  const remoteListeners = new Set();
+  // 행 목록 → {team,...,cl:{},ins:{}} 상태 객체로 조립
+  function rowsToState(rows) {
+    const st = { cl: {}, ins: {} };
+    (rows || []).forEach(r => {
+      const c = r.collection, v = r.value;
+      if (c.indexOf("cl:") === 0) st.cl[c.slice(3)] = v;
+      else if (c.indexOf("ins:") === 0) st.ins[c.slice(4)] = v;
+      else st[c] = v;
+    });
+    return st;
+  }
+  async function fetchAll() {
+    if (!SUPA) throw new Error("Supabase 미설정");
+    const { data, error } = await SUPA.from(SUPA_TABLE).select("collection,value");
+    if (error) throw error;
+    return rowsToState(data);
+  }
+  async function upsert(collection, value) {
+    if (!SUPA) return false;
+    if (value === null || value === undefined) {
+      const { error } = await SUPA.from(SUPA_TABLE).delete().eq("collection", collection);
+      return !error;
+    }
+    const { error } = await SUPA.from(SUPA_TABLE).upsert({ collection: collection, value: value }, { onConflict: "collection" });
+    return !error;
+  }
+  let _channel = null;
+  function subscribeRealtime() {
+    if (!SUPA || _channel) return;
+    try {
+      _channel = SUPA.channel("hr_store_rt")
+        .on("postgres_changes", { event: "*", schema: "public", table: SUPA_TABLE }, () => {
+          remoteListeners.forEach(fn => { try { fn(); } catch (e) {} }); // 다른 사람이 바꾸면 즉시 알림 → 실시간 공유
+        })
+        .subscribe();
+    } catch (e) {}
+  }
+  // 기존 코드 호환용 어댑터 (남아있는 gasRun 호출을 Supabase 로 연결)
+  function gasRun(fn) {
+    const args = Array.prototype.slice.call(arguments, 1);
+    if (fn === "getState") return fetchAll();
+    if (fn === "saveCollection") return upsert(args[0], args[1]);
+    if (fn === "listDriveFiles") return Promise.resolve([]);       // 드라이브 원본보기 기능은 Supabase 전환으로 비활성
+    if (fn === "uploadDriveFile") return Promise.resolve({ ok: false, disabled: true });
+    return Promise.reject(new Error("알 수 없는 작업: " + fn));
+  }
+  async function boot() {
+    emit("loading");
+    const mir = readMirror();
+    if (mir) applyState(mir); // STORE = 로컬 캐시(내 데이터)로 시작
+    if (!SUPA) { ready = true; emit("error"); return false; } // Supabase 미설정
+    try {
+      const state = await fetchAll();
+      ready = true;           // ★ applyState 의 자동복구(heal)가 동작하도록 먼저 ready=true
+      applyState(state);      // 서버에 빈 컬렉션은 내 로컬 데이터로 '자동 복구(재업로드)'
+      writeMirror();
+      subscribeRealtime();    // 실시간 변경 구독 → 다른 사람 변경이 즉시 반영
+      emit("saved");
+      return true;
+    } catch (e) {
+      ready = true;
+      emit(mir ? "offline" : "error");
+      return false;
+    }
+  }
+  const timers = {};
+  function schedulePush(collection, value, key) {
+    dirty.add(key);
+    emit("saving");
+    if (timers[key]) clearTimeout(timers[key]);
+    timers[key] = setTimeout(async () => {
+      try {
+        await gasRun("saveCollection", collection, value);
+      } catch (e) {} finally {
+        delete timers[key];
+        dirty.delete(key);
+        emit(dirty.size === 0 ? "saved" : "saving");
+      }
+    }, 450);
+  }
+  function setCollection(collection, value) {
+    if (collection.indexOf("cl:") === 0) {
+      STORE.cl[collection.slice(3)] = value;
+    } else if (collection.indexOf("ins:") === 0) {
+      const ym = collection.slice(4);
+      if (value === null) delete STORE.ins[ym];else STORE.ins[ym] = value;
+    } else {
+      STORE[collection] = value;
+    }
+    writeMirror();
+    if (!ready) return;
+    schedulePush(collection, value, collection);
+  }
+  async function pushNow(collection, value) {
+    if (collection.indexOf("cl:") === 0) {
+      STORE.cl[collection.slice(3)] = value;
+    } else if (collection.indexOf("ins:") === 0) {
+      const ym = collection.slice(4);
+      if (value === null) delete STORE.ins[ym];else STORE.ins[ym] = value;
+    } else {
+      STORE[collection] = value;
+    }
+    writeMirror();
+    if (!ready) return false;
+    if (timers[collection]) {
+      clearTimeout(timers[collection]);
+      delete timers[collection];
+    }
+    dirty.add(collection);
+    emit("saving");
+    try {
+      await gasRun("saveCollection", collection, value);
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      dirty.delete(collection);
+      emit(dirty.size === 0 ? "saved" : "saving");
+    }
+  }
+  async function refresh() {
+    try {
+      const data = await gasRun("getState");
+      applyState(data);
+      writeMirror();
+      if (status !== "saving" && dirty.size === 0) emit("saved");
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+  async function diagnose() {
+    if (!SUPA) {
+      return { ok: false, stage: "env", msg: "Supabase 설정이 비어 있습니다.\nIndex.html 상단의 SUPABASE_URL / SUPABASE_ANON_KEY 를 본인 프로젝트 값으로 채우세요." };
+    }
+    try {
+      await fetchAll();
+    } catch (e) {
+      return { ok: false, stage: "read", msg: "Supabase 읽기 실패 (" + (e && e.message || e) + ").\nURL/Key 또는 테이블(hr_store) 및 RLS 정책(select 허용)을 확인하세요." };
+    }
+    const token = "diag_" + Date.now();
+    const w = await upsert("__diag__", token);
+    if (!w) {
+      return { ok: false, stage: "write", msg: "Supabase 쓰기 실패.\nRLS 정책에서 anon 의 insert/update 가 허용되는지 확인하세요." };
+    }
+    let st;
+    try { st = await fetchAll(); } catch (e) { return { ok: false, stage: "verify", msg: "확인용 읽기 실패: " + (e && e.message || e) }; }
+    await upsert("__diag__", null);
+    if (st && st.__diag__ === token) return { ok: true, stage: "ok", msg: "✓ 정상입니다. Supabase 읽기/쓰기/실시간 동기화가 동작합니다." };
+    return { ok: false, stage: "write", msg: "쓰기가 반영되지 않았습니다. RLS 정책(insert/update/select)을 다시 확인하세요." };
+  }
+  // 내 로컬(STORE)의 모든 컬렉션을 서버로 강제 업로드 (서버가 비워졌을 때 복구용)
+  async function forcePushAll(onProgress) {
+    if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
+    const jobs = [];
+    ["team", "employees", "tasks", "ts", "routines", "memos", "gTmpl", "guide", "adminName"].forEach(c => {
+      const v = STORE[c];
+      if (v !== null && v !== undefined) jobs.push([c, v]);
+    });
+    Object.keys(STORE.cl || {}).forEach(k => jobs.push(["cl:" + k, STORE.cl[k]]));
+    Object.keys(STORE.ins || {}).forEach(ym => jobs.push(["ins:" + ym, STORE.ins[ym]]));
+    let done = 0, fail = 0;
+    for (const [c, v] of jobs) {
+      try { await gasRun("saveCollection", c, v); } catch (e) { fail++; }
+      done++;
+      if (onProgress) onProgress(done, jobs.length);
+    }
+    writeMirror();
+    return { ok: fail === 0, total: jobs.length, fail };
+  }
+  return {
+    boot,
+    refresh,
+    setCollection,
+    pushNow,
+    diagnose,
+    gasRun,
+    forcePushAll,
+    onStatus: fn => {
+      listeners.add(fn);
+      fn(status);
+      return () => listeners.delete(fn);
+    },
+    onRemote: fn => {
+      remoteListeners.add(fn);
+      return () => remoteListeners.delete(fn);
+    },
+    get: k => STORE[k],
+    getCL: key => STORE.cl[key],
+    getIns: ym => STORE.ins[ym],
+    isReady: () => ready,
+    pending: () => dirty.size,
+    status: () => status,
+    storage: { url: SUPABASE_URL, key: SUPABASE_ANON_KEY, bucket: SUPA_BUCKET, client: SUPA, enabled: !!SUPA },
+    STORE
+  };
+}();
+const lsGet = () => ({
+  team: SheetDB.get("team"),
+  employees: SheetDB.get("employees"),
+  tasks: SheetDB.get("tasks"),
+  ts: SheetDB.get("ts"),
+  adminName: SheetDB.get("adminName")
+});
+const lsSave = s => {};
+function useSkipFirstEffect(fn, deps) {
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    return fn();
+  }, deps);
+}
+const fmtAmt = v => {
+  if (v === null || v === undefined || String(v).trim() === "") return "—";
+  const n = Number(String(v).replace(/,/g, "").trim());
+  return isNaN(n) ? String(v) : n.toLocaleString("ko-KR");
+};
+const fmtCell = v => {
+  if (v === null || v === undefined || String(v).trim() === "") return "—";
+  const s = String(v).trim();
+  if (/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    return s.slice(0, 10);
+  }
+  return s;
+};
+const clKey = (m, t, tp) => `cl__${(m || "x").replace(/\s/g, "_")}__${(t || "x").replace(/\s/g, "_")}__${(tp || "x").replace(/\s/g, "_")}`;
+const DEF_SUBS = {
+  "입사": ["4대보험 취득 신고", "근로계약서 체결", "월급여 일할 계산", "급여 계좌 등록", "시스템 계정 생성", "온보딩 안내 발송"],
+  "퇴사": ["4대보험 상실 신고", "퇴직금 정산", "미사용 연차수당 지급", "최종 급여 정산", "퇴직연금 IRP 이관", "사내 시스템 계정 회수"],
+  "육아휴직": ["육아휴직 개시일 등록", "고용보험 육아휴직 급여 신청", "4대보험 납부 유예 확인", "급여 중지 처리"],
+  "육아기간 단축근로": ["단축근로 시작일 등록", "고용보험 급여 지원 신청", "급여 단축 계산 확인", "근로계약서 변경"],
+  "출산휴가": ["출산휴가 개시 신고", "건강보험 급여 신청", "4대보험 납부 유예 확인", "급여 처리 확인"],
+  "복직": ["4대보험 복직 처리", "급여 재개 확인", "근태 시스템 복직 등록", "육아휴직 종료 신고"]
+};
+const TYPE_S = {
+  "입사": {
+    cls: "bdg-blue",
+    clr: "#1D4ED8",
+    bg: "#EFF6FF"
+  },
+  "퇴사": {
+    cls: "bdg-red",
+    clr: "#DC2626",
+    bg: "#FEF2F2"
+  },
+  "육아휴직": {
+    cls: "bdg-purple",
+    clr: "#7C3AED",
+    bg: "#F5F3FF"
+  },
+  "육아기간 단축근로": {
+    cls: "bdg-amber",
+    clr: "#D97706",
+    bg: "#FFFBEB"
+  },
+  "출산휴가": {
+    cls: "bdg-pink",
+    clr: "#BE185D",
+    bg: "#FDF2F8"
+  },
+  "복직": {
+    cls: "bdg-green",
+    clr: "#16A34A",
+    bg: "#F0FDF4"
+  }
+};
+function loadGTmpl() {
+  const p = SheetDB.get("gTmpl");
+  if (p && typeof p === "object" && !Array.isArray(p)) return p;
+  const r = {};
+  Object.keys(DEF_SUBS).forEach(k => {
+    r[k] = DEF_SUBS[k].map(t => ({
+      id: `g_${k.slice(0, 3)}_${t.slice(0, 8).replace(/\s/g, "_")}`,
+      text: t
+    }));
+  });
+  return r;
+}
+function saveGTmpl(t) {
+  SheetDB.setCollection("gTmpl", t);
+}
+function loadCL(mgr, tgt, tp, gTmpl) {
+  const k = clKey(mgr, tgt, tp);
+  const gI = gTmpl && gTmpl[tp] || [];
+  const sv = SheetDB.getCL(k);
+  if (Array.isArray(sv)) {
+    const pers = sv.filter(x => !x.isGlobal);
+    const svGIds = new Set(sv.filter(x => x.isGlobal).map(x => x.gid || x.id));
+    const newG = gI.filter(g => !svGIds.has(g.id)).map(g => ({
+      id: uid(),
+      gid: g.id,
+      text: g.text,
+      done: false,
+      isGlobal: true
+    }));
+    const syncG = sv.filter(x => x.isGlobal).map(x => {
+      const m = gI.find(g => g.id === (x.gid || x.id));
+      return m ? {
+        ...x,
+        text: m.text
+      } : null;
+    }).filter(Boolean);
+    return [...pers, ...syncG, ...newG];
+  }
+  const defs = DEF_SUBS[tp] || [];
+  const gTxts = new Set(gI.map(g => g.text));
+  return [...gI.map(g => ({
+    id: uid(),
+    gid: g.id,
+    text: g.text,
+    done: false,
+    isGlobal: true
+  })), ...defs.filter(t => !gTxts.has(t)).map(t => ({
+    id: uid(),
+    text: t,
+    done: false,
+    isGlobal: false
+  }))];
+}
+function saveCL(mgr, tgt, tp, items) {
+  SheetDB.setCollection("cl:" + clKey(mgr, tgt, tp), items);
+}
+function loadRoutines() {
+  const r = SheetDB.get("routines");
+  return Array.isArray(r) ? r : [];
+}
+function saveRoutines(r) {
+  SheetDB.setCollection("routines", r || []);
+}
+const DEF_TEAM = [{
+  id: "T1",
+  name: "박혜연",
+  role: "HR 매니저",
+  color: "#6366F1"
+}, {
+  id: "T2",
+  name: "김희진",
+  role: "급여 담당",
+  color: "#0EA5E9"
+}, {
+  id: "T3",
+  name: "황선혜",
+  role: "인사 담당",
+  color: "#10B981"
+}, {
+  id: "T4",
+  name: "신하늬",
+  role: "온보딩 담당",
+  color: "#F59E0B"
+}];
+function genEmpTasks(emp) {
+  if (emp.type === "입사") return [{
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "4대보험 취득신고",
+    due: fmt(nxtM15(emp.date)),
+    category: "입사",
+    urgent: true,
+    asgn: "T3",
+    legal: true,
+    note: ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "근로계약서 체결",
+    due: fmt(addD(emp.date, 3)),
+    category: "입사",
+    urgent: false,
+    asgn: "T4",
+    legal: false,
+    note: ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "급여 계좌 등록",
+    due: fmt(addD(emp.date, 5)),
+    category: "입사",
+    urgent: false,
+    asgn: "T2",
+    legal: false,
+    note: ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "온보딩 시스템 등록",
+    due: fmt(addD(emp.date, 1)),
+    category: "입사",
+    urgent: false,
+    asgn: "T4",
+    legal: false,
+    note: ""
+  }];
+  return [{
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "4대보험 상실신고",
+    due: fmt(addD(emp.date, 14)),
+    category: "퇴사",
+    urgent: true,
+    asgn: "T3",
+    legal: true,
+    note: ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "퇴직금 정산",
+    due: fmt(addD(emp.date, 14)),
+    category: "퇴사",
+    urgent: true,
+    asgn: "T2",
+    legal: true,
+    note: emp.note || ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "최종 급여 정산",
+    due: fmt(addD(emp.date, 30)),
+    category: "퇴사",
+    urgent: false,
+    asgn: "T2",
+    legal: false,
+    note: ""
+  }, {
+    id: uid(),
+    empId: emp.id,
+    name: emp.name,
+    dept: emp.dept,
+    task: "퇴직연금 IRP 이관",
+    due: fmt(addD(emp.date, 30)),
+    category: "퇴사",
+    urgent: false,
+    asgn: "T1",
+    legal: false,
+    note: ""
+  }];
+}
+function expandRoutine(routine, existing, team) {
+  const {
+    id: rId,
+    task,
+    cycle,
+    startDate,
+    day,
+    assignees,
+    legal
+  } = routine;
+  const start = new Date(startDate || todayStr);
+  const horizon = new Date(TODAY);
+  horizon.setMonth(horizon.getMonth() + 36);
+  const hStart = new Date(TODAY);
+  hStart.setMonth(hStart.getMonth() - 24);
+  let mi = 1;
+  if (cycle === "분기별") mi = 3;else if (cycle === "반기별") mi = 6;else if (cycle === "연간") mi = 12;else if (cycle === "일회성") mi = null;
+  const exKeys = new Set((existing || []).filter(t => t.routineId === rId).map(t => t.routineKey));
+  const res = [];
+  const tIds = assignees === "all" ? (team || []).map(m => m.id) : Array.isArray(assignees) ? assignees : [];
+  const addDate = dt => {
+    const due = fmt(dt);
+    tIds.forEach(mid => {
+      const k = `${rId}_${due}_${mid}`;
+      if (exKeys.has(k)) return;
+      res.push({
+        id: uid(),
+        task,
+        due,
+        category: cycle,
+        urgent: !!legal,
+        legal: !!legal,
+        asgn: mid,
+        note: cycle + " 정기 일정",
+        empId: null,
+        name: "",
+        dept: "",
+        routineId: rId,
+        routineKey: k,
+        isRoutine: true
+      });
+    });
+  };
+  if (mi === null) {
+    const d = new Date(start.getFullYear(), start.getMonth(), day || 1);
+    if (d >= start && d <= horizon) addDate(d);
+  } else {
+    const es = new Date(Math.max(start.getTime(), hStart.getTime()));
+    let cur = new Date(es.getFullYear(), es.getMonth(), 1);
+    while (cur <= horizon) {
+      const dim = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate();
+      const ad = Math.min(day || 1, dim);
+      const occ = new Date(cur.getFullYear(), cur.getMonth(), ad);
+      if (occ >= start && occ >= hStart && occ <= horizon) addDate(occ);
+      cur.setMonth(cur.getMonth() + mi);
+    }
+  }
+  return res;
+}
+function Av({
+  name,
+  color,
+  size
+}) {
+  color = color || "#0EA5E9";
+  size = size || 28;
+  const s = {
+    width: size,
+    height: size,
+    borderRadius: size >= 32 ? 9 : "50%",
+    background: color + "18",
+    border: "1.5px solid " + color + "40",
+    color,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: size >= 32 ? 13 : 10,
+    fontWeight: 800,
+    flexShrink: 0
+  };
+  return React.createElement("div", {
+    style: s
+  }, (name || "?")[0]);
+}
+function PBar({
+  pct,
+  color,
+  h
+}) {
+  h = h || 6;
+  return React.createElement("div", {
+    className: "pbar",
+    style: {
+      height: h
+    }
+  }, React.createElement("div", {
+    className: "pbar-fill",
+    style: {
+      width: pct + "%",
+      background: color ? "linear-gradient(90deg," + color + "cc," + color + ")" : undefined
+    }
+  }));
+}
+function Chk({
+  checked,
+  onChange,
+  color,
+  disabled
+}) {
+  color = color || "#0EA5E9";
+  disabled = !!disabled;
+  return React.createElement("button", {
+    onClick: () => {
+      if (!disabled) onChange();
+    },
+    style: {
+      width: 15,
+      height: 15,
+      borderRadius: 4,
+      border: "1.5px solid " + (disabled ? "#CBD5E1" : checked ? color : "#CBD5E1"),
+      background: disabled ? "transparent" : checked ? color : "transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.5 : 1,
+      transition: "all .12s"
+    }
+  }, checked && React.createElement("svg", {
+    width: "9",
+    height: "9",
+    viewBox: "0 0 10 10",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M2 5l2.5 2.5 4-4",
+    stroke: "white",
+    strokeWidth: "1.8",
+    strokeLinecap: "round"
+  })));
+}
+function DelBtn({
+  onClick
+}) {
+  const [h, setH] = useState(false);
+  return React.createElement("button", {
+    onClick: onClick,
+    onMouseEnter: () => setH(true),
+    onMouseLeave: () => setH(false),
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: 5,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      border: "none",
+      background: h ? "#FEF2F2" : "transparent",
+      color: h ? "#EF4444" : "#CBD5E1",
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M5.5 6.5v4M8.5 6.5v4M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4",
+    stroke: "currentColor",
+    strokeWidth: "1.3",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })));
+}
+function EditBtn({
+  onClick
+}) {
+  const [h, setH] = useState(false);
+  return React.createElement("button", {
+    onClick: onClick,
+    onMouseEnter: () => setH(true),
+    onMouseLeave: () => setH(false),
+    title: "\uC218\uC815",
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: 5,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      border: "none",
+      background: h ? "#EFF6FF" : "transparent",
+      color: h ? "#2563EB" : "#CBD5E1",
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, React.createElement("svg", {
+    width: "10",
+    height: "10",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M9.4 2.3l2.3 2.3L5 11.3l-2.6.6.6-2.6 6.4-7z",
+    stroke: "currentColor",
+    strokeWidth: "1.3",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })));
+}
+function TaskEditModal({
+  task,
+  team,
+  onSave,
+  onClose
+}) {
+  const [t, setT] = useState(task.task || "");
+  const [due, setDue] = useState(task.due || todayStr);
+  const [asgn, setAsgn] = useState(task.asgn || "미지정");
+  const [urgent, setUrgent] = useState(!!task.urgent);
+  const [legal, setLegal] = useState(!!task.legal);
+  const [note, setNote] = useState(task.note || "");
+  const inpRef = useRef(null);
+  useEffect(() => {
+    if (inpRef.current) inpRef.current.focus();
+  }, []);
+  function save() {
+    if (!t.trim()) return;
+    onSave({
+      task: t.trim(),
+      due,
+      asgn,
+      urgent,
+      legal,
+      note
+    });
+  }
+  return React.createElement(Modal, {
+    title: "\uC5C5\uBB34 \uC218\uC815",
+    sub: due + " 기준",
+    onClose: onClose
+  }, React.createElement(FR, {
+    label: "\uC5C5\uBB34 \uB0B4\uC6A9"
+  }, React.createElement("input", {
+    ref: inpRef,
+    className: "inp",
+    value: t,
+    onChange: e => setT(e.target.value),
+    onKeyDown: e => e.key === "Enter" && save()
+  })), React.createElement(FR, {
+    label: "\uB9C8\uAC10\uC77C"
+  }, React.createElement("input", {
+    type: "date",
+    className: "inp",
+    value: due,
+    onChange: e => setDue(e.target.value)
+  })), React.createElement(FR, {
+    label: "\uB2F4\uB2F9\uC790"
+  }, React.createElement("select", {
+    className: "inp",
+    value: asgn,
+    onChange: e => setAsgn(e.target.value)
+  }, React.createElement("option", {
+    value: "\uBBF8\uC9C0\uC815"
+  }, "\uBBF8\uC9C0\uC815"), (team || []).map(m => React.createElement("option", {
+    key: m.id,
+    value: m.id
+  }, m.name)))), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 18,
+      marginBottom: 12
+    }
+  }, React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      fontSize: 11,
+      fontWeight: 600,
+      color: "var(--t2)",
+      cursor: "pointer"
+    }
+  }, React.createElement("input", {
+    type: "checkbox",
+    checked: urgent,
+    onChange: e => setUrgent(e.target.checked),
+    style: {
+      width: 14,
+      height: 14,
+      accentColor: "#DC2626",
+      cursor: "pointer"
+    }
+  }), "\uAE34\uAE09 \uC5C5\uBB34"), React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      fontSize: 11,
+      fontWeight: 600,
+      color: "var(--t2)",
+      cursor: "pointer"
+    }
+  }, React.createElement("input", {
+    type: "checkbox",
+    checked: legal,
+    onChange: e => setLegal(e.target.checked),
+    style: {
+      width: 14,
+      height: 14,
+      accentColor: "var(--sky-deep)",
+      cursor: "pointer"
+    }
+  }), "\uBC95\uC815 \uC5C5\uBB34")), React.createElement(FR, {
+    label: "\uBA54\uBAA8"
+  }, React.createElement("input", {
+    className: "inp",
+    value: note,
+    onChange: e => setNote(e.target.value),
+    placeholder: "(\uC120\uD0DD)"
+  })), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end",
+      marginTop: 4
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: onClose
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: save
+  }, "\uC800\uC7A5")));
+}
+function Toast({
+  msg,
+  onDone
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2800);
+    return () => clearTimeout(t);
+  }, []);
+  return React.createElement("div", {
+    className: "toast"
+  }, msg);
+}
+function Modal({
+  title,
+  sub,
+  onClose,
+  wide,
+  children
+}) {
+  return React.createElement("div", {
+    className: "modal-ov",
+    onClick: onClose
+  }, React.createElement("div", {
+    className: "modal-box fadein",
+    style: {
+      width: wide ? "min(680px,96vw)" : "360px"
+    },
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "modal-hd"
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "modal-title"
+  }, title), sub && React.createElement("div", {
+    className: "modal-sub"
+  }, sub)), React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      border: "1px solid var(--border2)",
+      background: "var(--sky-l)",
+      color: "var(--t2)",
+      cursor: "pointer",
+      fontSize: 14,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "X")), React.createElement("div", {
+    className: "modal-body"
+  }, children)));
+}
+function FR({
+  label,
+  children
+}) {
+  return React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, React.createElement("div", {
+    className: "inp-lbl"
+  }, label), children);
+}
+function ChecklistPanel({
+  row,
+  managerName,
+  onClose,
+  gTmpl,
+  setGTmpl
+}) {
+  const target = String(row.targetName || row.name || "");
+  const mtype = String(row.isReflected || row.type || "");
+  const mgr = String(managerName || "");
+  const ts2 = TYPE_S[mtype] || {
+    clr: "#0EA5E9",
+    cls: "bdg-sky"
+  };
+  const [items, setItems] = useState(() => loadCL(mgr, target, mtype, gTmpl));
+  const [newText, setNewText] = useState("");
+  const pRef = useRef(null);
+  const done = items.filter(x => x.done).length;
+  const pct = items.length ? Math.round(done / items.length * 100) : 0;
+  useSkipFirstEffect(() => {
+    saveCL(mgr, target, mtype, items);
+  }, [items]);
+  useEffect(() => {
+    const cur = gTmpl && gTmpl[mtype] || [];
+    const curIds = new Set(cur.map(g => g.id));
+    const cleaned = items.filter(x => !x.isGlobal || curIds.has(x.gid || x.id));
+    const exIds = new Set(cleaned.filter(x => x.isGlobal).map(x => x.gid || x.id));
+    const toAdd = cur.filter(g => !exIds.has(g.id)).map(g => ({
+      id: uid(),
+      gid: g.id,
+      text: g.text,
+      done: false,
+      isGlobal: true
+    }));
+    const synced = cleaned.map(x => {
+      if (!x.isGlobal) return x;
+      const m = cur.find(g => g.id === (x.gid || x.id));
+      return m ? {
+        ...x,
+        text: m.text
+      } : x;
+    });
+    const next = [...synced, ...toAdd];
+    if (JSON.stringify(next) !== JSON.stringify(items)) setItems(next);
+  }, [gTmpl, mtype]);
+  function toggleItem(id) {
+    setItems(p => p.map(x => x.id === id ? {
+      ...x,
+      done: !x.done
+    } : x));
+  }
+  function addPersonal() {
+    const t = newText.trim();
+    if (!t) return;
+    setItems(p => [...p, {
+      id: uid(),
+      text: t,
+      done: false,
+      isGlobal: false
+    }]);
+    setNewText("");
+    if (pRef.current) pRef.current.focus();
+  }
+  function delPersonal(id) {
+    setItems(p => p.filter(x => x.id !== id));
+  }
+  const persItems = items.filter(x => !x.isGlobal);
+  const globItems = items.filter(x => x.isGlobal);
+  return React.createElement("div", {
+    className: "cl-panel"
+  }, React.createElement("div", {
+    className: "cl-panel-hd"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 8
+    }
+  }, React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: "var(--sky-deep)",
+      marginBottom: 4
+    }
+  }, target), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5
+    }
+  }, React.createElement("span", {
+    className: "badge " + (ts2.cls || "bdg-gray"),
+    style: {
+      fontSize: 9.5,
+      padding: "1px 6px"
+    }
+  }, mtype), mgr && React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, "담당: " + mgr))), React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      border: "1px solid var(--border2)",
+      background: "#fff",
+      cursor: "pointer",
+      color: "var(--t3)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 12
+    }
+  }, "X")), React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 10,
+      color: "var(--t3)",
+      marginBottom: 5
+    }
+  }, React.createElement("span", null, done + "/" + items.length + " 완료"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5
+    }
+  }, items.length > 0 && pct === 100 && React.createElement("span", {
+    style: {
+      fontSize: 9,
+      padding: "1px 7px",
+      borderRadius: 10,
+      background: "#F0FDF4",
+      color: "#16A34A",
+      border: "1px solid #BBF7D0",
+      fontWeight: 700
+    }
+  }, "\uC804\uCCB4 \uC644\uB8CC"), items.length > 0 && pct < 100 && pct > 0 && React.createElement("span", {
+    style: {
+      fontSize: 9,
+      padding: "1px 7px",
+      borderRadius: 10,
+      background: "#FFFBEB",
+      color: "#D97706",
+      border: "1px solid #FDE68A",
+      fontWeight: 700
+    }
+  }, "\uC9C4\uD589 \uC911"), items.length > 0 && pct === 0 && React.createElement("span", {
+    style: {
+      fontSize: 9,
+      padding: "1px 7px",
+      borderRadius: 10,
+      background: "#F8FAFC",
+      color: "#94A3B8",
+      border: "1px solid var(--border2)",
+      fontWeight: 700
+    }
+  }, "\uBBF8\uC644\uB8CC"), React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: ts2.clr
+    }
+  }, pct + "%"))), React.createElement(PBar, {
+    pct: pct,
+    color: ts2.clr,
+    h: 5
+  })), React.createElement("div", {
+    className: "cl-panel-body"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5,
+      marginBottom: 10
+    }
+  }, React.createElement("input", {
+    ref: pRef,
+    className: "inp",
+    style: {
+      fontSize: 11,
+      padding: "6px 8px"
+    },
+    placeholder: "\uAC1C\uC778 \uD56D\uBAA9 \uCD94\uAC00 \uD6C4 Enter",
+    value: newText,
+    onChange: e => setNewText(e.target.value),
+    onKeyDown: e => e.key === "Enter" && addPersonal()
+  }), React.createElement("button", {
+    onClick: addPersonal,
+    style: {
+      flexShrink: 0,
+      padding: "6px 10px",
+      borderRadius: 7,
+      border: "none",
+      background: "var(--sky-d)",
+      color: "#fff",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "inherit"
+    }
+  }, "+")), globItems.length > 0 && React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 9.5,
+      fontWeight: 700,
+      color: ts2.clr,
+      textTransform: "uppercase",
+      letterSpacing: ".06em",
+      marginBottom: 5
+    }
+  }, "공통 루틴 (" + globItems.length + "개)"), globItems.map(item => React.createElement("div", {
+    key: item.id,
+    className: "cl-item" + (item.done ? " done-item" : ""),
+    style: {
+      borderColor: item.done ? "#BBF7D0" : ts2.clr + "30",
+      background: item.done ? "#F0FDF4" : ts2.clr + "05"
+    }
+  }, React.createElement(Chk, {
+    checked: item.done,
+    onChange: () => toggleItem(item.id),
+    color: ts2.clr
+  }), React.createElement("span", {
+    style: {
+      flex: 1,
+      fontSize: 11,
+      color: item.done ? "var(--t3)" : "var(--text)",
+      textDecoration: item.done ? "line-through" : "none"
+    }
+  }, item.text), React.createElement("span", {
+    style: {
+      fontSize: 9,
+      padding: "1px 5px",
+      borderRadius: 10,
+      background: ts2.clr + "18",
+      color: ts2.clr,
+      fontWeight: 700
+    }
+  }, "\uACF5\uD1B5")))), persItems.length > 0 && React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 9.5,
+      fontWeight: 700,
+      color: "var(--t3)",
+      textTransform: "uppercase",
+      letterSpacing: ".06em",
+      marginBottom: 5
+    }
+  }, "개인 항목 (" + persItems.length + "개)"), persItems.map(item => React.createElement("div", {
+    key: item.id,
+    className: "cl-item" + (item.done ? " done-item" : "")
+  }, React.createElement(Chk, {
+    checked: item.done,
+    onChange: () => toggleItem(item.id),
+    color: "var(--sky-d)"
+  }), React.createElement("span", {
+    style: {
+      flex: 1,
+      fontSize: 11,
+      color: item.done ? "var(--t3)" : "var(--text)",
+      textDecoration: item.done ? "line-through" : "none"
+    }
+  }, item.text), React.createElement(DelBtn, {
+    onClick: () => delPersonal(item.id)
+  })))), items.length === 0 && React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "var(--t3)",
+      fontSize: 11,
+      padding: "20px 0"
+    }
+  }, "\uD56D\uBAA9\uC744 \uCD94\uAC00\uD574\uC8FC\uC138\uC694"), React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "7px 10px",
+      borderRadius: 8,
+      background: "var(--sky-l)",
+      border: "1px solid var(--sky-m)",
+      fontSize: 9,
+      color: "var(--t3)",
+      fontFamily: "'DM Mono',monospace",
+      wordBreak: "break-all"
+    }
+  }, clKey(mgr, target, mtype))));
+}
+function BigCal({
+  tasks,
+  ts,
+  team,
+  calYear,
+  calMonth,
+  onNav,
+  onAddCal,
+  onToggle,
+  onDelete,
+  onEditTask,
+  selectedDate,
+  onSelectDate
+}) {
+  const [editTask, setEditTask] = useState(null);
+  const [selDay, setSelDay] = useState(() => {
+    if (selectedDate) {
+      const d = new Date(selectedDate);
+      if (d.getFullYear() === calYear && d.getMonth() === calMonth) return d.getDate();
+    }
+    return TODAY.getDate();
+  });
+  const [selAsgn, setSelAsgn] = useState(null);
+  const last = new Date(calYear, calMonth + 1, 0).getDate();
+  const startDow = new Date(calYear, calMonth, 1).getDay();
+  const evMap = useMemo(() => {
+    const m = {};
+    (tasks || []).forEach(t => {
+      if (!t.due) return;
+      const d = new Date(t.due);
+      if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+        const k = d.getDate();
+        if (!m[k]) m[k] = [];
+        m[k].push(t);
+      }
+    });
+    return m;
+  }, [tasks, calYear, calMonth]);
+  const selEvs = evMap[selDay] || [];
+  const asgnList = useMemo(() => [...new Set(selEvs.map(t => t.asgn || "미지정"))], [selEvs]);
+  useEffect(() => {
+    if (selAsgn && !asgnList.includes(selAsgn)) setSelAsgn(null);
+  }, [asgnList]);
+  const rname = id => {
+    const m = (team || []).find(x => x.id === id);
+    return m ? m.name : id || "미지정";
+  };
+  const days = [];
+  for (let i = 0; i < startDow; i++) days.push(null);
+  for (let d = 1; d <= last; d++) days.push(d);
+  const isTod = d => d && calYear === TODAY.getFullYear() && calMonth === TODAY.getMonth() && d === TODAY.getDate();
+  const isSelDate = d => d && selectedDate === fmt(new Date(calYear, calMonth, d));
+  return React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12
+    }
+  }, React.createElement("div", {
+    className: "card",
+    style: {
+      flex: 1,
+      marginBottom: 0
+    }
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, React.createElement("div", {
+    className: "card-icon"
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none"
+  }, React.createElement("rect", {
+    x: "1",
+    y: "2",
+    width: "14",
+    height: "12",
+    rx: "2",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.3"
+  }), React.createElement("path", {
+    d: "M5 1v3M11 1v3M1 7h14",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.2",
+    strokeLinecap: "round"
+  }))), KOR_M[calMonth] + " " + calYear), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => onNav(-1)
+  }, "\u2039"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => onNav(1)
+  }, "\u203A"))), React.createElement("div", {
+    className: "card-body"
+  }, React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7,1fr)",
+      gap: 2,
+      marginBottom: 4
+    }
+  }, ["일", "월", "화", "수", "목", "금", "토"].map(d => React.createElement("div", {
+    key: d,
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "var(--t3)",
+      textAlign: "center",
+      padding: "3px 0"
+    }
+  }, d))), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7,1fr)",
+      gap: 2
+    }
+  }, days.map((d, i) => {
+    const isSel = d && d === selDay;
+    const isTd = isTod(d);
+    const isSd = isSelDate(d) && !isSel;
+    const hasEv = d && (evMap[d] || []).length > 0;
+    let cls = "cal-cell";
+    if (isSel) cls += " active";else if (isTd || isSd) cls += " today";
+    if (hasEv) cls += " has-ev";
+    return React.createElement("div", {
+      key: i,
+      className: cls,
+      onClick: () => {
+        if (!d) return;
+        setSelDay(d);
+        setSelAsgn(null);
+        if (onSelectDate) onSelectDate(fmt(new Date(calYear, calMonth, d)));
+      }
+    }, d && React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: isSel ? "#fff" : isTd ? "var(--sky-d)" : "var(--t2)"
+      }
+    }, d), d && (evMap[d] || []).slice(0, 2).map((e, j) => React.createElement("div", {
+      key: j,
+      style: {
+        fontSize: 9,
+        borderRadius: 3,
+        padding: "1px 3px",
+        marginTop: 2,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
+        background: isSel ? "rgba(255,255,255,.2)" : e.legal ? "#FEF2F2" : "var(--sky-l)",
+        color: isSel ? "#fff" : e.legal ? "#DC2626" : "var(--sky-d)",
+        fontWeight: 600
+      }
+    }, e.task.slice(0, 6))), d && (evMap[d] || []).length > 2 && React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "var(--t3)",
+        marginTop: 1
+      }
+    }, "+" + (evMap[d].length - 2)));
+  })))), React.createElement("div", {
+    className: "card",
+    style: {
+      width: 248,
+      flexShrink: 0,
+      marginBottom: 0,
+      display: "flex",
+      flexDirection: "column"
+    }
+  }, React.createElement("div", {
+    className: "card-hd",
+    style: {
+      flexShrink: 0
+    }
+  }, React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 800,
+      color: "var(--sky-deep)"
+    }
+  }, calYear + ". " + (calMonth + 1) + ". " + selDay), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      marginTop: 1
+    }
+  }, asgnList.length + "명 · " + selEvs.length + "개")), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: () => onAddCal(fmt(new Date(calYear, calMonth, selDay)))
+  }, "+ \uCD94\uAC00")), React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: "auto"
+    }
+  }, React.createElement("div", {
+    style: {
+      padding: "10px 14px",
+      borderBottom: "1px solid var(--border)"
+    }
+  }, asgnList.length === 0 ? React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "16px 0",
+      color: "var(--t3)",
+      fontSize: 11
+    }
+  }, "\uB4F1\uB85D\uB41C \uC5C5\uBB34 \uC5C6\uC74C") : React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "var(--t3)",
+      textTransform: "uppercase",
+      letterSpacing: ".06em",
+      marginBottom: 7
+    }
+  }, "\uB2F4\uB2F9\uC790"), asgnList.map(a => {
+    const isA = selAsgn === a;
+    const m = (team || []).find(x => x.id === a);
+    const nm = m ? m.name : a;
+    const clr = m ? m.color : "#0EA5E9";
+    const cnt = selEvs.filter(t => (t.asgn || "미지정") === a).length;
+    return React.createElement("button", {
+      key: a,
+      onClick: () => setSelAsgn(a),
+      style: {
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "7px 10px",
+        borderRadius: 8,
+        border: "1.5px solid " + (isA ? clr : "var(--border2)"),
+        background: isA ? clr + "12" : "#fff",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        marginBottom: 5
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }
+    }, React.createElement(Av, {
+      name: nm,
+      color: clr,
+      size: 20
+    }), React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: isA ? clr : "var(--text)"
+      }
+    }, nm)), React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, cnt + "개"));
+  }))), React.createElement("div", {
+    style: {
+      padding: "10px 14px"
+    }
+  }, !selAsgn ? React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)"
+    }
+  }, "\uB2F4\uB2F9\uC790\uB97C \uC120\uD0DD\uD558\uC138\uC694") : React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--sky-deep)",
+      marginBottom: 8
+    }
+  }, rname(selAsgn) + " To-Do"), selEvs.filter(t => (t.asgn || "미지정") === selAsgn).map(t => {
+    const isDone = ts[t.id] === "completed";
+    return React.createElement("div", {
+      key: t.id,
+      style: {
+        padding: "8px 10px",
+        borderRadius: 9,
+        border: "1px solid var(--border)",
+        background: isDone ? "#F0FDF4" : "var(--s2)",
+        marginBottom: 6
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8
+      }
+    }, React.createElement(Chk, {
+      checked: isDone,
+      onChange: () => onToggle(t.id),
+      color: "#0EA5E9"
+    }), React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: 600,
+        color: isDone ? "var(--t3)" : "var(--text)",
+        textDecoration: isDone ? "line-through" : "none"
+      }
+    }, t.task), React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "var(--t3)",
+        marginTop: 2
+      }
+    }, (t.legal ? "법정" : "일반") + (t.note ? " · " + t.note : ""))), React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        flexShrink: 0
+      }
+    }, onEditTask && React.createElement(EditBtn, {
+      onClick: () => setEditTask(t)
+    }), onDelete && React.createElement(DelBtn, {
+      onClick: () => {
+        if (confirm("이 업무를 삭제할까요?")) onDelete(t.id);
+      }
+    }))));
+  }))))), editTask && React.createElement(TaskEditModal, {
+    task: editTask,
+    team: team,
+    onSave: patch => {
+      onEditTask(editTask.id, patch);
+      setEditTask(null);
+    },
+    onClose: () => setEditTask(null)
+  }));
+}
+function SummaryBar({
+  employees,
+  tasks,
+  ts,
+  team,
+  apiRows,
+  selectedDate,
+  calYear,
+  calMonth
+}) {
+  const moStr = calYear + "-" + String(calMonth + 1).padStart(2, "0");
+  const empJoiners = (employees || []).filter(e => e.type === "입사" && String(e.date || "").startsWith(moStr)).length;
+  const empLeavers = (employees || []).filter(e => e.type === "퇴사" && String(e.date || "").startsWith(moStr)).length;
+  const yr = String(calYear);
+  const mo2 = String(calMonth + 1).padStart(2, "0");
+  const moNum = String(calMonth + 1);
+  function matchesMonth(rm) {
+    const s = String(rm || "").trim();
+    if (!s) return false;
+    if (s.startsWith(yr + "." + mo2)) return true;
+    if (s.startsWith(yr + "-" + mo2)) return true;
+    if (s.startsWith(yr + "/" + mo2)) return true;
+    if (s === yr + "년 " + moNum + "월" || s === yr + "년 " + mo2 + "월") return true;
+    return false;
+  }
+  const apiMonthRows = (apiRows || []).filter(r => matchesMonth(r.reflectMonth));
+  const apiJoiners = apiMonthRows.filter(r => String(r.isReflected || "").trim() === "입사").length;
+  const apiLeavers = apiMonthRows.filter(r => String(r.isReflected || "").trim() === "퇴사").length;
+  const joiners = empJoiners + apiJoiners;
+  const leavers = empLeavers + apiLeavers;
+  const urgent = (tasks || []).filter(t => t.urgent && ts[t.id] !== "completed");
+  const thisWeek = urgent.filter(t => Math.ceil((new Date(t.due) - TODAY) / 86400000) <= 7);
+  const dayTasks = (tasks || []).filter(t => t.due === selectedDate);
+  const dayDone = dayTasks.filter(t => ts[t.id] === "completed").length;
+  const dayPct = dayTasks.length ? Math.round(dayDone / dayTasks.length * 100) : 0;
+  const monthTasks = (tasks || []).filter(t => t.due && String(t.due).startsWith(moStr));
+  const monthDone = monthTasks.filter(t => ts[t.id] === "completed").length;
+  const monthPct = monthTasks.length ? Math.round(monthDone / monthTasks.length * 100) : 0;
+  const monthLabel = KOR_M[calMonth] + " " + calYear;
+  // [휴가일자] 당월 일정 중 '연차/휴가/반차' 포함 일정 카운트 + 멤버/날짜 요약
+  const LEAVE_KW = ["연차", "휴가", "반차"];
+  const memberName = id => {
+    const m = (team || []).find(x => x && x.id === id);
+    return m ? m.name : "";
+  };
+  const leaveTasks = (tasks || []).filter(t => {
+    if (!t || !t.due || !String(t.due).startsWith(moStr)) return false;
+    const nm = String(t.task || "");
+    return LEAVE_KW.some(k => nm.indexOf(k) >= 0);
+  }).sort((a, b) => String(a.due).localeCompare(String(b.due)));
+  const leaveCount = leaveTasks.length;
+  const leaveSummary = leaveTasks.slice(0, 2).map(t => {
+    const who = t.name || memberName(t.asgn) || "";
+    const d = String(t.due || "").slice(5).replace("-", "/"); // MM/DD
+    return (who ? who + " " : "") + (t.task || "") + (d ? " · " + d : "");
+  });
+  return React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+      gap: 12,
+      marginBottom: 14
+    }
+  }, React.createElement("div", {
+    className: "stat-card"
+  }, React.createElement("div", {
+    className: "stat-label"
+  }, monthLabel + " 입퇴사"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: "#1D4ED8",
+      fontSize: 20
+    }
+  }, "+" + joiners), React.createElement("div", {
+    className: "stat-sub"
+  }, "\uC785\uC0AC")), React.createElement("div", {
+    style: {
+      width: 1,
+      height: 32,
+      background: "var(--border2)"
+    }
+  }), React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: "#DC2626",
+      fontSize: 20
+    }
+  }, "-" + leavers), React.createElement("div", {
+    className: "stat-sub"
+  }, "\uD1F4\uC0AC")), React.createElement("div", {
+    style: {
+      width: 1,
+      height: 32,
+      background: "var(--border2)"
+    }
+  }), React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, React.createElement("div", {
+    className: "stat-sub"
+  }, "\uC21C\uC99D"), React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: joiners - leavers >= 0 ? "#16A34A" : "#DC2626",
+      fontSize: 20
+    }
+  }, (joiners - leavers >= 0 ? "+" : "") + String(joiners - leavers))))), React.createElement("div", {
+    className: "stat-card",
+    style: {
+      borderTopColor: "#0D9488"
+    }
+  }, React.createElement("div", {
+    className: "stat-label",
+    style: {
+      color: "#0D9488"
+    }
+  }, "\uD734\uAC00\uC77C\uC790"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: "#0D9488",
+      fontSize: 24,
+      whiteSpace: "nowrap"
+    }
+  }, "\uCD1D " + leaveCount + "\uAC74"), React.createElement("div", null, React.createElement("div", {
+    className: "stat-sub"
+  }, "\uB2F9\uC6D4 \uC5F0\uCC28/\uD734\uAC00/\uBC18\uCC28"), leaveSummary.length ? leaveSummary.map((s, i) => React.createElement("div", {
+    key: i,
+    style: {
+      fontSize: 10,
+      color: "#0D9488",
+      marginTop: 2
+    }
+  }, s)) : React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      marginTop: 2
+    }
+  }, "\uC608\uC815 \uC5C6\uC74C")))), React.createElement("div", {
+    className: "stat-card",
+    style: {
+      borderTopColor: "#8B5CF6"
+    }
+  }, React.createElement("div", {
+    className: "stat-label",
+    style: {
+      color: "#8B5CF6"
+    }
+  }, "\uB2F9\uC77C \uC9C4\uD589\uB960"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: "#8B5CF6",
+      fontSize: 30
+    }
+  }, dayPct + "%"), React.createElement("div", {
+    className: "stat-sub",
+    style: {
+      marginBottom: 3
+    }
+  }, dayDone + "/" + dayTasks.length)), React.createElement(PBar, {
+    pct: dayPct,
+    color: "#8B5CF6",
+    h: 6
+  }), React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginTop: 6,
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, React.createElement("span", {
+    style: {
+      color: "#8B5CF6",
+      fontWeight: 600
+    }
+  }, selectedDate), React.createElement("span", null, "완료 " + dayDone + " / 미완료 " + (dayTasks.length - dayDone)))), React.createElement("div", {
+    className: "stat-card",
+    style: {
+      borderTopColor: "#0EA5E9"
+    }
+  }, React.createElement("div", {
+    className: "stat-label",
+    style: {
+      color: "var(--sky-d)"
+    }
+  }, "\uC6D4 \uC9C4\uD589\uB960"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: "var(--sky-d)",
+      fontSize: 30
+    }
+  }, monthPct + "%"), React.createElement("div", {
+    className: "stat-sub",
+    style: {
+      marginBottom: 3
+    }
+  }, monthDone + "/" + monthTasks.length)), React.createElement(PBar, {
+    pct: monthPct,
+    h: 6
+  }), React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginTop: 6,
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, React.createElement("span", {
+    style: {
+      color: "var(--sky-d)",
+      fontWeight: 600
+    }
+  }, monthLabel), React.createElement("span", null, "완료 " + monthDone + " / 미완료 " + (monthTasks.length - monthDone)))));
+}
+function PageHome({
+  employees,
+  tasks,
+  ts,
+  apiRows,
+  team,
+  calYear,
+  calMonth,
+  onCalNav,
+  onToggle,
+  onDelete,
+  onEditTask,
+  onAddCal,
+  selectedDate,
+  onSelectDate
+}) {
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement(SummaryBar, {
+    employees: employees || [],
+    tasks: tasks || [],
+    ts: ts || {},
+    team: team || [],
+    apiRows: apiRows || [],
+    selectedDate: selectedDate,
+    calYear: calYear,
+    calMonth: calMonth
+  }), React.createElement(BigCal, {
+    tasks: tasks || [],
+    ts: ts || {},
+    team: team || [],
+    calYear: calYear,
+    calMonth: calMonth,
+    onNav: onCalNav,
+    onAddCal: onAddCal,
+    onToggle: onToggle,
+    onDelete: onDelete,
+    onEditTask: onEditTask,
+    selectedDate: selectedDate,
+    onSelectDate: onSelectDate
+  }));
+}
+function AssigneePicker({
+  team,
+  assigneeMode,
+  setAssigneeMode,
+  selMem,
+  setSelMem
+}) {
+  function toggle(id) {
+    setSelMem(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  }
+  return React.createElement("div", null, React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 8
+    }
+  }, [["all", "전체 인원"], ["selected", "특정 인원 선택"]].map(([v, l]) => React.createElement("button", {
+    key: v,
+    onClick: () => setAssigneeMode(v),
+    style: {
+      padding: "5px 12px",
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (assigneeMode === v ? "var(--sky-d)" : "var(--border2)"),
+      background: assigneeMode === v ? "var(--sky-l)" : "#fff",
+      color: assigneeMode === v ? "var(--sky-d)" : "var(--t3)"
+    }
+  }, l))), assigneeMode === "selected" && React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, (team || []).map(m => {
+    const isSel = selMem.includes(m.id);
+    return React.createElement("button", {
+      key: m.id,
+      onClick: () => toggle(m.id),
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "7px 10px",
+        borderRadius: 9,
+        border: "1.5px solid " + (isSel ? m.color : "var(--border2)"),
+        background: isSel ? m.color + "12" : "#fff",
+        cursor: "pointer",
+        fontFamily: "inherit"
+      }
+    }, React.createElement(Av, {
+      name: m.name,
+      color: m.color,
+      size: 22
+    }), React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: isSel ? m.color : "var(--text)"
+      }
+    }, m.name), React.createElement("div", {
+      style: {
+        marginLeft: "auto",
+        width: 14,
+        height: 14,
+        borderRadius: 3,
+        border: "1.5px solid " + (isSel ? m.color : "#CBD5E1"),
+        background: isSel ? m.color : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }
+    }, isSel && React.createElement("svg", {
+      width: "9",
+      height: "9",
+      viewBox: "0 0 10 10",
+      fill: "none"
+    }, React.createElement("path", {
+      d: "M2 5l2.5 2.5 4-4",
+      stroke: "white",
+      strokeWidth: "1.8",
+      strokeLinecap: "round"
+    }))));
+  })), assigneeMode === "all" && React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--sky-d)",
+      background: "var(--sky-l)",
+      borderRadius: 8,
+      padding: "7px 10px"
+    }
+  }, "모든 팀원(" + (team || []).length + "명)에게 일정이 배정됩니다."));
+}
+function ScheduleForm({
+  team,
+  onSubmit,
+  onCancel,
+  initCycle,
+  showCancel
+}) {
+  const [task, setTask] = useState("");
+  const [cycle, setCycle] = useState(initCycle || "일회성");
+  const [startDate, setStartDate] = useState(todayStr);
+  const [day, setDay] = useState(15);
+  const [legal, setLegal] = useState(false);
+  const [assigneeMode, setAssigneeMode] = useState("all");
+  const [selMem, setSelMem] = useState([]);
+  const [err, setErr] = useState("");
+  function submit() {
+    if (!task.trim()) {
+      setErr("일정명을 입력해주세요.");
+      return;
+    }
+    if (assigneeMode === "selected" && selMem.length === 0) {
+      setErr("담당자를 1명 이상 선택해주세요.");
+      return;
+    }
+    const assignees = assigneeMode === "all" ? "all" : selMem;
+    onSubmit({
+      task: task.trim(),
+      cycle,
+      startDate,
+      day: Number(day),
+      legal,
+      assignees
+    });
+  }
+  return React.createElement("div", null, React.createElement(FR, {
+    label: "\uC77C\uC815\uBA85"
+  }, React.createElement("input", {
+    className: "inp",
+    placeholder: "\uC608: 4\uB300\uBCF4\uD5D8 \uCDE8\uB4DD\uC2E0\uACE0",
+    value: task,
+    onChange: e => setTask(e.target.value)
+  })), React.createElement(FR, {
+    label: "\uBC18\uBCF5 \uC8FC\uAE30"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap"
+    }
+  }, CYCLE_OPTS.map(c => React.createElement("button", {
+    key: c,
+    onClick: () => setCycle(c),
+    style: {
+      padding: "5px 12px",
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (cycle === c ? CYCLE_CLR[c] || "var(--sky)" : "var(--border2)"),
+      background: cycle === c ? (CYCLE_CLR[c] || "var(--sky)") + "15" : "#fff",
+      color: cycle === c ? CYCLE_CLR[c] || "var(--sky)" : "var(--t3)"
+    }
+  }, c))), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      marginTop: 4
+    }
+  }, "일회성: 1회 / 월간: 매월 / 분기별: 3개월마다 / 반기별: 6개월 / 연간: 매년")), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10
+    }
+  }, React.createElement(FR, {
+    label: cycle === "일회성" ? "날짜" : "시작 날짜"
+  }, React.createElement("input", {
+    type: "date",
+    className: "inp",
+    value: startDate,
+    onChange: e => setStartDate(e.target.value)
+  })), cycle !== "일회성" && React.createElement(FR, {
+    label: "\uB9E4\uC6D4 \uBA87 \uC77C"
+  }, React.createElement("input", {
+    type: "number",
+    className: "inp",
+    min: 1,
+    max: 31,
+    value: day,
+    onChange: e => setDay(e.target.value)
+  }))), React.createElement(FR, {
+    label: "\uBC95\uC815 \uC5EC\uBD80"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, [["false", "일반"], ["true", "법정 (긴급)"]].map(([v, l]) => React.createElement("button", {
+    key: v,
+    onClick: () => setLegal(v === "true"),
+    style: {
+      padding: "5px 12px",
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (String(legal) === v ? "#EF4444" : "var(--border2)"),
+      background: String(legal) === v ? "#FEF2F2" : "#fff",
+      color: String(legal) === v ? "#EF4444" : "var(--t3)"
+    }
+  }, l)))), React.createElement(FR, {
+    label: "\uB2F4\uB2F9\uC790 \uBC30\uC815"
+  }, React.createElement(AssigneePicker, {
+    team: team,
+    assigneeMode: assigneeMode,
+    setAssigneeMode: setAssigneeMode,
+    selMem: selMem,
+    setSelMem: setSelMem
+  })), err && React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#DC2626",
+      background: "#FEF2F2",
+      border: "1px solid #FECACA",
+      borderRadius: 8,
+      padding: "8px 12px",
+      marginBottom: 8
+    }
+  }, err), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end",
+      marginTop: 14
+    }
+  }, showCancel && React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: onCancel
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: submit
+  }, cycle === "일회성" ? "일정 추가" : "정기 일정 생성")));
+}
+function ScheduleModal({
+  team,
+  onClose,
+  onAddSchedules
+}) {
+  function handleSubmit(payload) {
+    if (payload.cycle === "일회성") {
+      const tIds = payload.assignees === "all" ? (team || []).map(m => m.id) : payload.assignees || [];
+      const newTasks = tIds.map(mid => ({
+        id: uid(),
+        task: payload.task,
+        due: payload.startDate,
+        category: "일회성",
+        urgent: !!payload.legal,
+        legal: !!payload.legal,
+        asgn: mid,
+        note: "일회성 일정",
+        empId: null,
+        name: "",
+        dept: "",
+        isRoutine: false
+      }));
+      onAddSchedules({
+        kind: "tasks",
+        tasks: newTasks
+      });
+    } else {
+      onAddSchedules({
+        kind: "routine",
+        ...payload
+      });
+    }
+    onClose();
+  }
+  return React.createElement(Modal, {
+    title: "\uC77C\uC815 \uCD94\uAC00",
+    sub: "\uC77C\uD68C\uC131 \uB610\uB294 \uC815\uAE30 \uBC18\uBCF5 \uC77C\uC815\uC744 \uCD94\uAC00\uD569\uB2C8\uB2E4",
+    onClose: onClose,
+    wide: true
+  }, React.createElement(ScheduleForm, {
+    team: team,
+    onSubmit: handleSubmit,
+    onCancel: onClose,
+    showCancel: true
+  }));
+}
+function RoutineEditForm({
+  routine,
+  team,
+  onSave,
+  onCancel
+}) {
+  const [task, setTask] = useState(routine.task || "");
+  const [cycle, setCycle] = useState(routine.cycle || "월간");
+  const [day, setDay] = useState(routine.day || 15);
+  const [startDate, setStartDate] = useState(routine.startDate || todayStr);
+  const [legal, setLegal] = useState(!!routine.legal);
+  const [assigneeMode, setAssigneeMode] = useState(routine.assignees === "all" ? "all" : "selected");
+  const [selMem, setSelMem] = useState(() => routine.assignees === "all" ? [] : Array.isArray(routine.assignees) ? routine.assignees : []);
+  function save() {
+    if (!task.trim()) return alert("일정명을 입력해주세요.");
+    if (assigneeMode === "selected" && selMem.length === 0) return alert("담당자를 1명 이상 선택해주세요.");
+    onSave({
+      task: task.trim(),
+      cycle,
+      day: Number(day),
+      startDate,
+      legal,
+      assignees: assigneeMode === "all" ? "all" : selMem
+    });
+  }
+  return React.createElement("div", {
+    style: {
+      padding: "14px 16px",
+      borderTop: "1px solid var(--border)",
+      background: "#FAFBFF"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--sky-deep)",
+      marginBottom: 10
+    }
+  }, "\uC815\uAE30 \uC77C\uC815 \uC218\uC815"), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uC77C\uC815\uBA85"), React.createElement("input", {
+    className: "inp",
+    style: {
+      fontSize: 11
+    },
+    value: task,
+    onChange: e => setTask(e.target.value)
+  })), React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uBC18\uBCF5 \uC8FC\uAE30"), React.createElement("select", {
+    className: "inp",
+    style: {
+      fontSize: 11
+    },
+    value: cycle,
+    onChange: e => setCycle(e.target.value)
+  }, CYCLE_OPTS.map(cv => React.createElement("option", {
+    key: cv,
+    value: cv
+  }, cv)))), React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uC2DC\uC791 \uB0A0\uC9DC"), React.createElement("input", {
+    type: "date",
+    className: "inp",
+    style: {
+      fontSize: 11
+    },
+    value: startDate,
+    onChange: e => setStartDate(e.target.value)
+  })), cycle !== "일회성" && React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uB9E4\uC6D4 \uBA70\uCE60"), React.createElement("input", {
+    type: "number",
+    className: "inp",
+    style: {
+      fontSize: 11
+    },
+    min: 1,
+    max: 31,
+    value: day,
+    onChange: e => setDay(e.target.value)
+  }))), React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uBC95\uC815 \uC5EC\uBD80"), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6
+    }
+  }, [["false", "일반"], ["true", "법정"]].map(([v, l]) => React.createElement("button", {
+    key: v,
+    onClick: () => setLegal(v === "true"),
+    style: {
+      padding: "4px 10px",
+      borderRadius: 7,
+      fontSize: 10,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (String(legal) === v ? "#EF4444" : "var(--border2)"),
+      background: String(legal) === v ? "#FEF2F2" : "#fff",
+      color: String(legal) === v ? "#EF4444" : "var(--t3)"
+    }
+  }, l)))), React.createElement("div", {
+    style: {
+      marginBottom: 10
+    }
+  }, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uB2F4\uB2F9\uC790 \uBC30\uC815"), React.createElement(AssigneePicker, {
+    team: team,
+    assigneeMode: assigneeMode,
+    setAssigneeMode: setAssigneeMode,
+    selMem: selMem,
+    setSelMem: setSelMem
+  })), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      justifyContent: "flex-end"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: onCancel
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: save
+  }, "\uC218\uC815 \uC800\uC7A5")));
+}
+function RoutineManagerModal({
+  routines,
+  team,
+  onClose,
+  onDelete,
+  onAdd,
+  onReset,
+  onEdit
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
+  function handleDelete(r) {
+    if (confirm(r.task + " 정기 일정을 전체 삭제할까요?")) onDelete(r.id);
+  }
+  function handleEditSave(rid, payload) {
+    onEdit(rid, payload);
+    setEditId(null);
+  }
+  const rts = routines || [];
+  return React.createElement(Modal, {
+    title: "\uC815\uAE30 \uC77C\uC815 \uAD00\uB9AC",
+    sub: "\uBC18\uBCF5 \uC8FC\uAE30\uBCC4 \uC77C\uC815 \uD15C\uD50C\uB9BF \uAD00\uB9AC",
+    onClose: onClose,
+    wide: true
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)"
+    }
+  }, rts.length + "개의 정기 일정"), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    style: {
+      fontSize: 10
+    },
+    onClick: () => {
+      if (confirm("초기화할까요?")) onReset();
+    }
+  }, "\uCD08\uAE30\uD654"), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: () => {
+      setShowAdd(p => !p);
+      setEditId(null);
+    }
+  }, showAdd ? "닫기" : "+ 정기 일정 추가"))), showAdd && React.createElement("div", {
+    style: {
+      marginBottom: 12,
+      padding: 14,
+      borderRadius: 10,
+      border: "1px solid var(--border2)",
+      background: "var(--sky-l)"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: "var(--sky-deep)",
+      marginBottom: 10
+    }
+  }, "\uC0C8 \uC815\uAE30 \uC77C\uC815 \uCD94\uAC00"), React.createElement(ScheduleForm, {
+    team: team,
+    onSubmit: payload => {
+      onAdd({
+        kind: "routine",
+        ...payload
+      });
+      setShowAdd(false);
+    },
+    onCancel: () => setShowAdd(false),
+    showCancel: true
+  })), rts.length === 0 && !showAdd && React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "24px 0",
+      color: "var(--t3)",
+      fontSize: 12
+    }
+  }, "\uB4F1\uB85D\uB41C \uC815\uAE30 \uC77C\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uCD94\uAC00 \uBC84\uD2BC\uC73C\uB85C \uC2DC\uC791\uD558\uC138\uC694."), rts.map(r => {
+    const clr = CYCLE_CLR[r.cycle] || "#64748B";
+    const isEd = editId === r.id;
+    const aNames = r.assignees === "all" ? "전체 인원" : Array.isArray(r.assignees) ? r.assignees.map(id => {
+      const m = (team || []).find(x => x.id === id);
+      return m ? m.name : id;
+    }).join(", ") : "없음";
+    return React.createElement("div", {
+      key: r.id,
+      style: {
+        marginBottom: 8,
+        borderRadius: 10,
+        border: "1px solid " + (isEd ? clr : clr + "30"),
+        overflow: "hidden"
+      }
+    }, React.createElement("div", {
+      style: {
+        padding: "12px 14px",
+        background: clr + "07",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10
+      }
+    }, React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 4
+      }
+    }, React.createElement("span", {
+      style: {
+        fontSize: 9,
+        padding: "1px 6px",
+        borderRadius: 10,
+        background: clr,
+        color: "#fff",
+        fontWeight: 700,
+        flexShrink: 0
+      }
+    }, r.cycle), React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: "var(--text)"
+      }
+    }, r.task), r.legal && React.createElement("span", {
+      style: {
+        fontSize: 9,
+        padding: "1px 5px",
+        borderRadius: 10,
+        background: "#FEF2F2",
+        color: "#DC2626",
+        border: "1px solid #FECACA",
+        fontWeight: 700
+      }
+    }, "\uBC95\uC815")), React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)",
+        display: "flex",
+        gap: 12
+      }
+    }, React.createElement("span", null, "시작: " + r.startDate), r.cycle !== "일회성" && React.createElement("span", null, "매월 " + r.day + "일"), React.createElement("span", null, "담당: " + aNames))), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexShrink: 0
+      }
+    }, React.createElement("button", {
+      onClick: () => setEditId(isEd ? null : r.id),
+      style: {
+        padding: "4px 10px",
+        borderRadius: 7,
+        fontSize: 10,
+        fontWeight: 700,
+        fontFamily: "inherit",
+        cursor: "pointer",
+        border: "1.5px solid " + (isEd ? clr : "var(--border2)"),
+        background: isEd ? clr + "15" : "#fff",
+        color: isEd ? clr : "var(--t2)"
+      }
+    }, isEd ? "닫기" : "수정"), React.createElement("button", {
+      onClick: () => handleDelete(r),
+      style: {
+        padding: "4px 10px",
+        borderRadius: 7,
+        border: "1px solid #FECACA",
+        background: "#FEF2F2",
+        color: "#EF4444",
+        cursor: "pointer",
+        fontSize: 10,
+        fontWeight: 700,
+        fontFamily: "inherit"
+      }
+    }, "\uC0AD\uC81C"))), isEd && React.createElement(RoutineEditForm, {
+      routine: r,
+      team: team || [],
+      onSave: payload => handleEditSave(r.id, payload),
+      onCancel: () => setEditId(null)
+    }));
+  }));
+}
+function GlobalRoutineModal({
+  mtype,
+  gTmpl,
+  setGTmpl,
+  onClose
+}) {
+  const ts2 = TYPE_S[mtype] || {
+    clr: "#0EA5E9",
+    cls: "bdg-sky"
+  };
+  const gItems = gTmpl && gTmpl[mtype] || [];
+  const [newText, setNewText] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const inputRef = useRef(null);
+  function addItem() {
+    const t = newText.trim();
+    if (!t) return;
+    const upd = {
+      ...gTmpl,
+      [mtype]: [...gItems, {
+        id: "g_" + Date.now(),
+        text: t
+      }]
+    };
+    setGTmpl(upd);
+    saveGTmpl(upd);
+    setNewText("");
+    if (inputRef.current) inputRef.current.focus();
+  }
+  function startEdit(g) {
+    setEditId(g.id);
+    setEditText(g.text);
+  }
+  function saveEdit(gid) {
+    const t = editText.trim();
+    if (!t) return;
+    const upd = {
+      ...gTmpl,
+      [mtype]: gItems.map(g => g.id === gid ? {
+        ...g,
+        text: t
+      } : g)
+    };
+    setGTmpl(upd);
+    saveGTmpl(upd);
+    setEditId(null);
+    setEditText("");
+  }
+  function delItem(gid) {
+    const upd = {
+      ...gTmpl,
+      [mtype]: gItems.filter(g => g.id !== gid)
+    };
+    setGTmpl(upd);
+    saveGTmpl(upd);
+  }
+  return React.createElement(Modal, {
+    title: mtype + " 공통 루틴 마스터 관리",
+    sub: "이 유형의 모든 대상자 체크리스트에 자동 적용됩니다",
+    onClose: onClose,
+    wide: true
+  }, React.createElement("div", {
+    style: {
+      marginBottom: 14,
+      padding: "10px 14px",
+      borderRadius: 9,
+      background: ts2.clr + "08",
+      border: "1px solid " + ts2.clr + "30",
+      fontSize: 11,
+      color: ts2.clr
+    }
+  }, "현재 " + gItems.length + "개의 공통 루틴 항목이 등록되어 있습니다. 항목을 추가하면 \"" + mtype + "\" 모든 대상자의 체크리스트에 즉시 반영됩니다."), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 16
+    }
+  }, React.createElement("input", {
+    ref: inputRef,
+    className: "inp",
+    placeholder: "새 공통 루틴 항목 입력 (예: 4대보험 취득 신고)",
+    value: newText,
+    onChange: e => setNewText(e.target.value),
+    onKeyDown: e => e.key === "Enter" && addItem()
+  }), React.createElement("button", {
+    className: "btn btn-primary",
+    style: {
+      flexShrink: 0,
+      padding: "6px 16px"
+    },
+    onClick: addItem
+  }, "\uCD94\uAC00")), gItems.length === 0 ? React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "24px 0",
+      color: "var(--t3)",
+      fontSize: 12,
+      borderRadius: 10,
+      border: "1px dashed var(--border2)",
+      background: "var(--bg)"
+    }
+  }, "\uB4F1\uB85D\uB41C \uACF5\uD1B5 \uB8E8\uD2F4 \uD56D\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC704 \uC785\uB825\uCC3D\uC73C\uB85C \uCD94\uAC00\uD574\uBCF4\uC138\uC694.") : gItems.map((g, i) => React.createElement("div", {
+    key: g.id,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "9px 12px",
+      borderRadius: 9,
+      border: "1px solid " + (editId === g.id ? ts2.clr : "var(--border)"),
+      background: editId === g.id ? ts2.clr + "07" : "#fff",
+      marginBottom: 6
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: "var(--t3)",
+      minWidth: 20,
+      textAlign: "center"
+    }
+  }, i + 1), React.createElement("span", {
+    style: {
+      fontSize: 9,
+      padding: "1px 6px",
+      borderRadius: 10,
+      background: ts2.clr,
+      color: "#fff",
+      fontWeight: 700,
+      flexShrink: 0
+    }
+  }, "\uACF5\uD1B5"), editId === g.id ? React.createElement(React.Fragment, null, React.createElement("input", {
+    className: "inp",
+    style: {
+      flex: 1,
+      fontSize: 11,
+      padding: "4px 8px"
+    },
+    value: editText,
+    onChange: e => setEditText(e.target.value),
+    onKeyDown: e => e.key === "Enter" && saveEdit(g.id),
+    autoFocus: true
+  }), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: () => saveEdit(g.id)
+  }, "\uC800\uC7A5"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setEditId(null)
+  }, "\uCDE8\uC18C")) : React.createElement(React.Fragment, null, React.createElement("span", {
+    style: {
+      flex: 1,
+      fontSize: 12,
+      color: "var(--text)"
+    }
+  }, g.text), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => startEdit(g),
+    style: {
+      padding: "3px 10px"
+    }
+  }, "\uC218\uC815"), React.createElement("button", {
+    onClick: () => delItem(g.id),
+    style: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      border: "1px solid #FECACA",
+      background: "#FEF2F2",
+      color: "#EF4444",
+      cursor: "pointer",
+      fontSize: 12,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0
+    }
+  }, "\xD7")))));
+}
+function PageOB({
+  apiRows,
+  apiStatus,
+  team,
+  onRefresh,
+  gTmpl,
+  setGTmpl
+}) {
+  const [mgrF, setMgrF] = useState("ALL");
+  const [typeF, setTypeF] = useState("ALL");
+  const [monthF, setMonthF] = useState("ALL");
+  const [selRow, setSelRow] = useState(null);
+  const [routineModal, setRoutineModal] = useState(null);
+  const [clRefresh, setClRefresh] = useState(0);
+  const moveRows = useMemo(() => (apiRows || []).filter(r => MOVE_TYPES.includes(String(r.isReflected || "").trim())), [apiRows]);
+  const months = useMemo(() => [...new Set(moveRows.map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [moveRows]);
+  const managers = useMemo(() => [...new Set(moveRows.map(r => String(r.manager || "").trim()).filter(Boolean))], [moveRows]);
+  const filtered = useMemo(() => moveRows.filter(r => {
+    if (monthF !== "ALL" && String(r.reflectMonth || "").trim() !== monthF) return false;
+    if (mgrF !== "ALL" && String(r.manager || "").trim() !== mgrF) return false;
+    if (typeF !== "ALL" && String(r.isReflected || "").trim() !== typeF) return false;
+    return true;
+  }), [moveRows, monthF, mgrF, typeF]);
+  const typeCounts = useMemo(() => {
+    const c = {};
+    MOVE_TYPES.forEach(t => {
+      c[t] = moveRows.filter(r => String(r.isReflected || "").trim() === t).length;
+    });
+    return c;
+  }, [moveRows]);
+  useEffect(() => {
+    setSelRow(null);
+  }, [mgrF]);
+  const TH = {
+    background: "var(--sky-d)",
+    borderRight: "1px solid rgba(255,255,255,.15)",
+    padding: "7px 10px",
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#fff",
+    whiteSpace: "nowrap",
+    textAlign: "left"
+  };
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(6,1fr)",
+      gap: 8,
+      marginBottom: 14
+    }
+  }, MOVE_TYPES.map(t => {
+    const ts2 = TYPE_S[t] || {
+      clr: "#0EA5E9",
+      bg: "#E0F2FE"
+    };
+    const cnt = typeCounts[t] || 0;
+    const gCnt = gTmpl && gTmpl[t] && gTmpl[t].length || 0;
+    const isActive = typeF === t;
+    return React.createElement("div", {
+      key: t,
+      className: "card",
+      style: {
+        padding: "12px 14px",
+        marginBottom: 0,
+        borderTop: "2px solid " + ts2.clr,
+        background: isActive ? ts2.bg : "#fff",
+        position: "relative",
+        overflow: "visible"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 4
+      }
+    }, React.createElement("div", {
+      style: {
+        fontSize: 10,
+        fontWeight: 700,
+        color: ts2.clr,
+        cursor: "pointer"
+      },
+      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+    }, t), React.createElement("button", {
+      onClick: e => {
+        e.stopPropagation();
+        setRoutineModal(t);
+      },
+      title: "\uACF5\uD1B5 \uB8E8\uD2F4 \uAD00\uB9AC",
+      style: {
+        width: 18,
+        height: 18,
+        borderRadius: 5,
+        border: "1px solid " + ts2.clr + "50",
+        background: ts2.clr + "12",
+        color: ts2.clr,
+        cursor: "pointer",
+        fontSize: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: 700,
+        flexShrink: 0
+      }
+    }, "\u2699")), React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: ts2.clr,
+        cursor: "pointer"
+      },
+      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+    }, cnt), React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginTop: 2
+      }
+    }, React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)",
+        cursor: "pointer"
+      },
+      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+    }, "\uAC74"), gCnt > 0 && React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: ts2.clr,
+        background: ts2.clr + "12",
+        padding: "1px 5px",
+        borderRadius: 8
+      }
+    }, "공통 " + gCnt)));
+  })), apiStatus !== "ok" && React.createElement("div", {
+    style: {
+      padding: "8px 14px",
+      borderRadius: 9,
+      border: "1px solid",
+      marginBottom: 12,
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      fontSize: 11,
+      background: apiStatus === "err" ? "#FEF2F2" : "var(--sky-l)",
+      borderColor: apiStatus === "err" ? "#FECACA" : "var(--sky-m)",
+      color: apiStatus === "err" ? "#DC2626" : "var(--sky-d)"
+    }
+  }, React.createElement("div", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: "currentColor",
+      animation: apiStatus === "loading" ? "pulse 1s infinite" : "none"
+    }
+  }), apiStatus === "loading" ? "로딩 중..." : apiStatus === "err" ? "API 연결 실패" : "API 대기", React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: onRefresh
+  }, "\uC0C8\uB85C\uACE0\uCE68")), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 12,
+      flexWrap: "wrap"
+    }
+  }, React.createElement("select", {
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: monthF,
+    onChange: e => setMonthF(e.target.value)
+  }, React.createElement("option", {
+    value: "ALL"
+  }, "\uC6D4 \uC804\uCCB4"), months.map(m => React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), React.createElement("div", {
+    className: "tab-bar"
+  }, React.createElement("button", {
+    className: "tab-btn" + (mgrF === "ALL" ? " active" : ""),
+    onClick: () => setMgrF("ALL")
+  }, "\uC804\uCCB4"), managers.map(m => {
+    const tm = (team || []).find(x => x.name === m);
+    return React.createElement("button", {
+      key: m,
+      className: "tab-btn" + (mgrF === m ? " active" : ""),
+      onClick: () => setMgrF(m),
+      style: mgrF === m && tm ? {
+        background: tm.color + "15",
+        borderColor: tm.color,
+        color: tm.color
+      } : {}
+    }, m);
+  })), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => {
+      setMonthF("ALL");
+      setMgrF("ALL");
+      setTypeF("ALL");
+    }
+  }, "\uCD08\uAE30\uD654"), React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)"
+    }
+  }, filtered.length + "/" + moveRows.length + "건")), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 0,
+      background: "#fff",
+      border: "1px solid var(--border2)",
+      borderRadius: "var(--r)",
+      overflow: "hidden",
+      boxShadow: "var(--sh)"
+    }
+  }, React.createElement("div", {
+    style: {
+      flex: 1,
+      overflow: "auto",
+      minWidth: 0,
+      display: "flex",
+      flexDirection: "column"
+    }
+  }, React.createElement("div", {
+    style: {
+      padding: "13px 18px",
+      borderBottom: "1px solid var(--border)",
+      background: "linear-gradient(135deg,#fff,#F8FBFF)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 0
+    }
+  }, React.createElement("div", {
+    className: "card-icon"
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 20 20",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M4 10h12M10 4l6 6-6 6",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.6",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }))), React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "var(--sky-deep)"
+    }
+  }, "\uC778\uC0AC\uC774\uB3D9 \uAD00\uB9AC \u2014 D\uC5F4 \uC790\uB3D9 \uD544\uD130"), React.createElement("div", {
+    style: {
+      marginLeft: "auto",
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, "카드 우상단 ⚙ 클릭 → 유형별 공통 루틴 관리"), selRow && React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--sky-d)",
+      fontWeight: 600
+    }
+  }, "\u2190 \uD589 \uD074\uB9AD\uC2DC \uCCB4\uD06C\uB9AC\uC2A4\uD2B8")), React.createElement("div", {
+    style: {
+      overflowX: "auto",
+      flex: 1
+    }
+  }, React.createElement("table", {
+    className: "xtbl",
+    style: {
+      minWidth: 860
+    }
+  }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 36
+    }
+  }, "#"), ["A급여반영월", "B작성자", "C담당자", "D구분", "E사업부", "F사번", "G대상자", "H내용", "I금액", "J기타"].map(h => React.createElement("th", {
+    key: h,
+    className: "xcl",
+    style: {
+      minWidth: h.startsWith("D") ? 100 : h.startsWith("H") ? 150 : 80
+    }
+  }, h[0])), React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 110,
+      background: "#E0E7FF",
+      color: "#4F46E5",
+      fontWeight: 800
+    }
+  }, "K 1\uCC28\uAC80\uC99D"), React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 110,
+      background: "#D1FAE5",
+      color: "#059669",
+      fontWeight: 800
+    }
+  }, "L 2\uCC28\uAC80\uC99D"), React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 90,
+      background: "#EDE9FE",
+      color: "#7C3AED",
+      fontWeight: 800
+    }
+  }, "M \uCD5C\uC885\uC644\uB8CC"))), React.createElement("tbody", {
+    key: clRefresh
+  }, filtered.length === 0 ? React.createElement("tr", null, React.createElement("td", {
+    colSpan: 13,
+    style: {
+      textAlign: "center",
+      padding: 30,
+      color: "var(--t3)",
+      fontSize: 12
+    }
+  }, apiStatus === "loading" ? "로딩 중..." : moveRows.length === 0 ? "업무 이력 탭에서 데이터를 불러오세요" : "필터 조건에 맞는 데이터 없음")) : filtered.map((row, ri) => {
+    const ts2 = TYPE_S[String(row.isReflected || "").trim()] || {
+      clr: "#64748B",
+      cls: "bdg-gray"
+    };
+    const isSel = selRow && selRow.rowIndex === row.rowIndex;
+    const mgrName = String(row.manager || "").trim();
+    const tm = (team || []).find(x => x.name === mgrName);
+    return React.createElement("tr", {
+      key: ri,
+      className: "row-click" + (isSel ? " row-sel" : ""),
+      onClick: () => setSelRow(isSel ? null : row)
+    }, React.createElement("td", {
+      className: "rnum"
+    }, ri + 1), React.createElement("td", {
+      className: "mono",
+      style: {
+        fontSize: 11
+      }
+    }, row.reflectMonth || "—"), React.createElement("td", null, row.writer || "—"), React.createElement("td", null, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 5
+      }
+    }, tm && React.createElement(Av, {
+      name: tm.name,
+      color: tm.color,
+      size: 18
+    }), React.createElement("span", {
+      style: {
+        fontWeight: 600,
+        color: tm ? tm.color : "var(--text)"
+      }
+    }, mgrName || "—"))), React.createElement("td", null, React.createElement("span", {
+      className: "badge " + (ts2.cls || "bdg-gray"),
+      style: {
+        fontSize: 10
+      }
+    }, row.isReflected || "—")), React.createElement("td", null, row.department || "—"), React.createElement("td", {
+      className: "mono",
+      style: {
+        fontSize: 11
+      }
+    }, row.employeeId || "—"), React.createElement("td", {
+      style: {
+        fontWeight: 700,
+        color: "var(--sky-d)"
+      }
+    }, row.targetName || "—"), React.createElement("td", {
+      style: {
+        maxWidth: 160
+      }
+    }, React.createElement("span", {
+      style: {
+        display: "block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, fmtCell(row.content))), React.createElement("td", {
+      className: "amt"
+    }, fmtAmt(row.amount)), React.createElement("td", {
+      style: {
+        color: "var(--t3)"
+      }
+    }, row.etc || "—"), React.createElement("td", {
+      style: {
+        background: row.verify1Done ? "#EEF2FF" : "transparent"
+      }
+    }, row.verify1Done && React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#4F46E5",
+        fontWeight: 700
+      }
+    }, "완료 " + String(row.verify1By || "")), !row.verify1Done && React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, "\uBBF8\uC644\uB8CC")), React.createElement("td", {
+      style: {
+        background: row.verify2Done ? "#ECFDF5" : "transparent"
+      }
+    }, row.verify2Done && React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#059669",
+        fontWeight: 700
+      }
+    }, "완료 " + String(row.verify2By || "")), !row.verify2Done && React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, row.verify1Done ? "미완료" : "대기")), React.createElement("td", {
+      style: {
+        textAlign: "center",
+        background: "transparent"
+      }
+    }, (() => {
+      const mgrName = String(row.manager || "").trim();
+      const target = String(row.targetName || "").trim();
+      const mtype = String(row.isReflected || "").trim();
+      if (!mtype || !target) return React.createElement("span", {
+        style: {
+          fontSize: 10,
+          color: "#CBD5E1"
+        }
+      }, "\u2014");
+      const k = `cl__${mgrName.replace(/\s/g, "_")}__${target.replace(/\s/g, "_")}__${mtype.replace(/\s/g, "_")}`;
+      let items = SheetDB.getCL(k) || [];
+      if (items.length === 0) return React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "2px 7px",
+          borderRadius: 10,
+          background: "#F8FAFC",
+          color: "#94A3B8",
+          fontWeight: 700
+        }
+      }, "\uBBF8\uC2DC\uC791");
+      const total = items.length;
+      const done = items.filter(x => x.done).length;
+      if (done === total) return React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "2px 7px",
+          borderRadius: 10,
+          background: "#F0FDF4",
+          color: "#16A34A",
+          border: "1px solid #BBF7D0",
+          fontWeight: 700
+        }
+      }, "\uC644\uB8CC");
+      if (done === 0) return React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "2px 7px",
+          borderRadius: 10,
+          background: "#FEF9C3",
+          color: "#92400E",
+          border: "1px solid #FDE68A",
+          fontWeight: 700
+        }
+      }, "\uBBF8\uC644\uB8CC");
+      return React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "2px 7px",
+          borderRadius: 10,
+          background: "#FFF7ED",
+          color: "#C2410C",
+          fontWeight: 700
+        }
+      }, done + "/" + total);
+    })()));
+  }))))), selRow && React.createElement(ChecklistPanel, {
+    row: selRow,
+    managerName: mgrF === "ALL" ? String(selRow.manager || "") : mgrF,
+    onClose: () => {
+      setSelRow(null);
+      setClRefresh(p => p + 1);
+    },
+    gTmpl: gTmpl,
+    setGTmpl: setGTmpl
+  })), routineModal && React.createElement(GlobalRoutineModal, {
+    mtype: routineModal,
+    gTmpl: gTmpl,
+    setGTmpl: setGTmpl,
+    onClose: () => setRoutineModal(null)
+  }));
+}
+function QuickAddModal({
+  member,
+  defaultDate,
+  onSave,
+  onClose
+}) {
+  const [task, setTask] = useState("");
+  const [due, setDue] = useState(defaultDate || todayStr);
+  const [urgent, setUrgent] = useState(false);
+  const inpRef = useRef(null);
+  useEffect(() => {
+    if (inpRef.current) inpRef.current.focus();
+  }, []);
+  function handleSave() {
+    if (!task.trim()) return;
+    onSave(task, due, urgent);
+  }
+  return React.createElement("div", {
+    className: "modal-ov",
+    onClick: onClose
+  }, React.createElement("div", {
+    className: "modal-box fadein",
+    style: {
+      width: "min(400px,96vw)"
+    },
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "modal-hd"
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "modal-title",
+    style: {
+      color: member.color
+    }
+  }, "업무 추가 — " + member.name), React.createElement("div", {
+    className: "modal-sub"
+  }, member.role + " · " + due + " 기준")), React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      border: "1px solid var(--border2)",
+      background: "var(--sky-l)",
+      color: "var(--t2)",
+      cursor: "pointer",
+      fontSize: 14,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "X")), React.createElement("div", {
+    className: "modal-body"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "8px 12px",
+      borderRadius: 10,
+      background: member.color + "10",
+      border: "1px solid " + member.color + "30",
+      marginBottom: 14
+    }
+  }, React.createElement(Av, {
+    name: member.name,
+    color: member.color,
+    size: 30
+  }), React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: member.color
+    }
+  }, member.name), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, member.role))), React.createElement(FR, {
+    label: "\uC5C5\uBB34 \uB0B4\uC6A9"
+  }, React.createElement("input", {
+    ref: inpRef,
+    className: "inp",
+    placeholder: "\uC608: 4\uB300\uBCF4\uD5D8 \uCDE8\uB4DD\uC2E0\uACE0 \uD655\uC778",
+    value: task,
+    onChange: e => setTask(e.target.value),
+    onKeyDown: e => e.key === "Enter" && handleSave()
+  })), React.createElement(FR, {
+    label: "\uB9C8\uAC10\uC77C"
+  }, React.createElement("input", {
+    type: "date",
+    className: "inp",
+    value: due,
+    onChange: e => setDue(e.target.value)
+  })), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 14
+    }
+  }, React.createElement("input", {
+    type: "checkbox",
+    id: "qa-urgent",
+    checked: urgent,
+    onChange: e => setUrgent(e.target.checked),
+    style: {
+      width: 14,
+      height: 14,
+      accentColor: member.color,
+      cursor: "pointer"
+    }
+  }), React.createElement("label", {
+    htmlFor: "qa-urgent",
+    style: {
+      fontSize: 11,
+      color: "var(--t2)",
+      cursor: "pointer",
+      fontWeight: 600
+    }
+  }, "\uAE34\uAE09 \uC5C5\uBB34\uB85C \uC9C0\uC815")), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: onClose
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: handleSave,
+    style: {
+      background: member.color,
+      borderColor: member.color
+    }
+  }, "\uC5C5\uBB34 \uCD94\uAC00")))));
+}
+function PageTeam({
+  tasks,
+  ts,
+  team,
+  onToggle,
+  onDelete,
+  onEditTask,
+  onUpdateTeam,
+  selectedDate,
+  onSelectDate
+}) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({
+    name: "",
+    role: "",
+    color: "#0EA5E9"
+  });
+  const [showWeekly, setShowWeekly] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(null);
+  const [editTask, setEditTask] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [reportBase, setReportBase] = useState(selectedDate);
+  function openWeekly() {
+    setReportBase(selectedDate);
+    setShowWeekly(true);
+  }
+  function prevDay() {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    onSelectDate(fmt(d));
+  }
+  function nextDay() {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    onSelectDate(fmt(d));
+  }
+  function shiftReportWeek(weeks) {
+    const d = new Date(reportBase);
+    d.setDate(d.getDate() + weeks * 7);
+    setReportBase(fmt(d));
+  }
+  function getWeekRange(dateStr) {
+    const d = new Date(dateStr);
+    const dow = d.getDay();
+    const diffMon = dow === 0 ? -6 : 1 - dow;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() + diffMon);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    return {
+      start: fmt(mon),
+      end: fmt(sun)
+    };
+  }
+  const reportWeekRange = getWeekRange(reportBase);
+  const reportNextStart = new Date(reportWeekRange.end);
+  reportNextStart.setDate(reportNextStart.getDate() + 1);
+  const reportNextEnd = new Date(reportNextStart);
+  reportNextEnd.setDate(reportNextStart.getDate() + 6);
+  const reportNextWeekRange = {
+    start: fmt(reportNextStart),
+    end: fmt(reportNextEnd)
+  };
+  const todayWeekRange = getWeekRange(todayStr);
+  const isCurrentWeek = reportWeekRange.start === todayWeekRange.start;
+  const weekOffset = (() => {
+    const diffMs = new Date(reportWeekRange.start) - new Date(todayWeekRange.start);
+    return Math.round(diffMs / (7 * 86400000));
+  })();
+  const weekLabel = isCurrentWeek ? "이번 주" : weekOffset < 0 ? Math.abs(weekOffset) + "주 전" : weekOffset + "주 후";
+  function inRange(due, range) {
+    return due >= range.start && due <= range.end;
+  }
+  const weeklySummary = useMemo(() => {
+    return (team || []).map(m => {
+      const mt = (tasks || []).filter(t => t.asgn === m.id);
+      const thisWeekTasks = mt.filter(t => inRange(t.due, reportWeekRange));
+      const nextWeekTasks = mt.filter(t => inRange(t.due, reportNextWeekRange));
+      return {
+        ...m,
+        thisWeekTasks,
+        nextWeekTasks
+      };
+    });
+  }, [tasks, ts, team, reportBase]);
+  function buildReportText() {
+    const lines = [];
+    lines.push(`[주간 보고 요약 — ${weekLabel}]`);
+    lines.push(`대상 주: ${reportWeekRange.start} ~ ${reportWeekRange.end}`);
+    lines.push(`다음 주: ${reportNextWeekRange.start} ~ ${reportNextWeekRange.end}`);
+    lines.push("");
+    weeklySummary.forEach(m => {
+      if (m.thisWeekTasks.length === 0 && m.nextWeekTasks.length === 0) return;
+      lines.push(`■ ${m.name} (${m.role})`);
+      lines.push(`  ▶ 이번 주 일정 (${m.thisWeekTasks.length}건)`);
+      if (m.thisWeekTasks.length === 0) lines.push("    - 없음");else m.thisWeekTasks.forEach(t => lines.push(`    - [${t.due}] ${t.task} ${ts[t.id] === "completed" ? "[완료]" : "[미완료]"}`));
+      lines.push(`  ▷ 다음 주 일정 (${m.nextWeekTasks.length}건)`);
+      if (m.nextWeekTasks.length === 0) lines.push("    - 없음");else m.nextWeekTasks.forEach(t => lines.push(`    - [${t.due}] ${t.task} ${ts[t.id] === "completed" ? "[완료]" : "[미완료]"}`));
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+  function handleCopy() {
+    const text = buildReportText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  const dayStats = (team || []).map(m => {
+    const mt = (tasks || []).filter(t => t.asgn === m.id && t.due === selectedDate);
+    const done = mt.filter(t => ts[t.id] === "completed").length;
+    const pct = mt.length ? Math.round(done / mt.length * 100) : 0;
+    return {
+      ...m,
+      dayTotal: mt.length,
+      dayDone: done,
+      dayPct: pct,
+      dayTasks: mt
+    };
+  });
+  const allDayTasks = (tasks || []).filter(t => t.due === selectedDate);
+  const allDayDone = allDayTasks.filter(t => ts[t.id] === "completed").length;
+  const allDayPct = allDayTasks.length ? Math.round(allDayDone / allDayTasks.length * 100) : 0;
+  function openAdd() {
+    setForm({
+      name: "",
+      role: "",
+      color: "#0EA5E9"
+    });
+    setModal("add");
+  }
+  function openEdit(m) {
+    setForm({
+      name: m.name,
+      role: m.role,
+      color: m.color
+    });
+    setModal(m);
+  }
+  function save() {
+    if (!form.name.trim()) return;
+    if (modal === "add") onUpdateTeam([...(team || []), {
+      id: "T" + Date.now(),
+      ...form
+    }]);else onUpdateTeam((team || []).map(m => m.id === modal.id ? {
+      ...m,
+      ...form
+    } : m));
+    setModal(null);
+  }
+  function remove(id) {
+    if (confirm("팀원을 삭제할까요?")) onUpdateTeam((team || []).filter(m => m.id !== id));
+  }
+  function scrollToMember(memberId) {
+    const el = document.getElementById("member-card-" + memberId);
+    if (el) el.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+  function handleQuickSave(task, due) {
+    if (!task.trim() || !quickAdd) return;
+    const m = quickAdd.member;
+    const newTask = {
+      id: uid(),
+      empId: null,
+      name: "",
+      dept: "",
+      task: task.trim(),
+      due,
+      category: "일회성",
+      urgent: false,
+      legal: false,
+      asgn: m.id,
+      note: "",
+      isRoutine: false
+    };
+    if (typeof window.__addTask === "function") window.__addTask(newTask);
+    setQuickAdd(null);
+  }
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 14,
+      background: "#fff",
+      border: "1px solid var(--border2)",
+      borderRadius: "var(--r)",
+      padding: "12px 18px",
+      boxShadow: "var(--sh)"
+    }
+  }, React.createElement("div", {
+    style: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: prevDay,
+    style: {
+      padding: "5px 10px",
+      fontWeight: 700
+    }
+  }, "\u2039 \uC774\uC804"), React.createElement("input", {
+    type: "date",
+    value: selectedDate,
+    onChange: e => onSelectDate(e.target.value),
+    style: {
+      fontSize: 12,
+      padding: "5px 10px",
+      border: "1.5px solid var(--border2)",
+      borderRadius: "var(--rs)",
+      background: "#fff",
+      color: "var(--text)",
+      fontFamily: "inherit",
+      outline: "none"
+    }
+  }), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: nextDay,
+    style: {
+      padding: "5px 10px",
+      fontWeight: 700
+    }
+  }, "\uB2E4\uC74C \u203A"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => onSelectDate(todayStr),
+    style: {
+      padding: "5px 10px",
+      color: "var(--sky-d)"
+    }
+  }, "\uC624\uB298")), React.createElement("button", {
+    className: "btn btn-secondary",
+    style: {
+      fontSize: 11,
+      padding: "5px 13px"
+    },
+    onClick: openWeekly
+  }, "\uC8FC\uAC04 \uBCF4\uACE0 \uC694\uC57D"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: openAdd
+  }, "+ \uD300\uC6D0 \uCD94\uAC00")), React.createElement("div", {
+    style: {
+      marginBottom: 14,
+      background: "#fff",
+      border: "1px solid var(--border2)",
+      borderRadius: "var(--r)",
+      padding: "14px 18px",
+      boxShadow: "var(--sh)"
+    }
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#8B5CF6"
+    }
+  }, selectedDate + " 당일 진행률"), React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800,
+      color: "#8B5CF6"
+    }
+  }, allDayPct + "% ", React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      color: "var(--t3)"
+    }
+  }, allDayDone + "/" + allDayTasks.length + "개"))), React.createElement(PBar, {
+    pct: allDayPct,
+    color: "#8B5CF6",
+    h: 7
+  }), allDayTasks.length === 0 && React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)",
+      marginTop: 6
+    }
+  }, "\uC774 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC77C\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.")), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+      gap: 10,
+      marginBottom: 14
+    }
+  }, (team || []).map((m, idx) => {
+    const d = dayStats[idx];
+    return React.createElement("div", {
+      key: m.id,
+      className: "card",
+      style: {
+        padding: "16px 18px",
+        borderTop: "3px solid " + m.color
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12
+      }
+    }, React.createElement(Av, {
+      name: m.name,
+      color: m.color,
+      size: 34
+    }), React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0,
+        cursor: "pointer"
+      },
+      onClick: () => scrollToMember(m.id),
+      title: m.name + " 업무 목록으로 이동"
+    }, React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: m.color,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, m.name), React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, m.role)), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 4
+      }
+    }, React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        padding: "3px 8px",
+        fontSize: 10
+      },
+      onClick: () => openEdit(m)
+    }, "\uC218\uC815"), React.createElement("button", {
+      className: "btn btn-danger",
+      style: {
+        padding: "3px 8px",
+        fontSize: 10
+      },
+      onClick: () => remove(m.id)
+    }, "\uC0AD\uC81C"))), React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
+        marginBottom: 6
+      }
+    }, React.createElement("span", {
+      style: {
+        fontSize: 24,
+        fontWeight: 800,
+        color: m.color,
+        letterSpacing: "-.04em"
+      }
+    }, d.dayPct + "%"), React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, d.dayDone + "/" + d.dayTotal)), React.createElement(PBar, {
+      pct: d.dayPct,
+      color: m.color,
+      h: 5
+    }), React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "var(--t3)",
+        marginTop: 5
+      }
+    }, d.dayDone + "/" + d.dayTotal + " 완료 · 당일"));
+  })), (team || []).map((m, idx) => {
+    const d = dayStats[idx];
+    return React.createElement("div", {
+      key: m.id,
+      id: "member-card-" + m.id,
+      className: "card"
+    }, React.createElement("div", {
+      className: "card-hd"
+    }, React.createElement("div", {
+      className: "card-title",
+      style: {
+        color: m.color
+      }
+    }, React.createElement(Av, {
+      name: m.name,
+      color: m.color,
+      size: 24
+    }), m.name + " · " + m.role, React.createElement("span", {
+      style: {
+        fontSize: 10,
+        fontWeight: 500,
+        color: "var(--t3)",
+        marginLeft: 6
+      }
+    }, selectedDate)), React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, React.createElement("button", {
+      onClick: () => setQuickAdd({
+        member: m
+      }),
+      title: "" + m.name + "에게 업무 추가",
+      style: {
+        padding: "3px 10px",
+        borderRadius: 7,
+        border: "1.5px solid " + m.color + "50",
+        background: m.color + "10",
+        color: m.color,
+        cursor: "pointer",
+        fontSize: 12,
+        fontWeight: 700,
+        fontFamily: "inherit",
+        display: "flex",
+        alignItems: "center",
+        gap: 4
+      }
+    }, React.createElement("span", {
+      style: {
+        fontSize: 14
+      }
+    }, "+"), "\uC5C5\uBB34 \uCD94\uAC00"), React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 800,
+        color: m.color
+      }
+    }, d.dayPct + "% ", React.createElement("span", {
+      style: {
+        fontSize: 10,
+        fontWeight: 500,
+        color: "var(--t3)"
+      }
+    }, d.dayDone + "/" + d.dayTotal)))), React.createElement("div", {
+      className: "card-body"
+    }, d.dayTasks.length > 0 ? d.dayTasks.map(t => {
+      const isDone = ts[t.id] === "completed";
+      return React.createElement("div", {
+        key: t.id,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 0",
+          borderBottom: "1px solid var(--border)"
+        }
+      }, React.createElement(Chk, {
+        checked: isDone,
+        onChange: () => onToggle(t.id),
+        color: m.color
+      }), React.createElement("div", {
+        style: {
+          flex: 1,
+          minWidth: 0
+        }
+      }, React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          flexWrap: "wrap"
+        }
+      }, t.isRoutine && React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "1px 5px",
+          borderRadius: 10,
+          background: (CYCLE_CLR[t.category] || "#64748B") + "15",
+          color: CYCLE_CLR[t.category] || "#64748B",
+          fontWeight: 700,
+          flexShrink: 0
+        }
+      }, t.category), t.urgent && React.createElement("span", {
+        style: {
+          fontSize: 9,
+          padding: "1px 5px",
+          borderRadius: 10,
+          background: "#FEF2F2",
+          color: "#DC2626",
+          border: "1px solid #FECACA",
+          fontWeight: 700,
+          flexShrink: 0
+        }
+      }, "\uAE34\uAE09"), React.createElement("span", {
+        style: {
+          fontSize: 12,
+          color: isDone ? "var(--t3)" : "var(--text)",
+          textDecoration: isDone ? "line-through" : "none"
+        }
+      }, t.task)), React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: "var(--t3)",
+          marginTop: 2
+        }
+      }, t.due + " · " + dday(t.due))), React.createElement(EditBtn, {
+        onClick: () => setEditTask(t)
+      }), React.createElement(DelBtn, {
+        onClick: () => {
+          if (confirm("이 업무를 삭제할까요?")) onDelete(t.id);
+        }
+      }));
+    }) : React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--t3)",
+        padding: "12px 0",
+        textAlign: "center"
+      }
+    }, selectedDate + "에 배정된 일정 없음")));
+  }), quickAdd && React.createElement(QuickAddModal, {
+    member: quickAdd.member,
+    defaultDate: selectedDate,
+    onSave: handleQuickSave,
+    onClose: () => setQuickAdd(null)
+  }), editTask && React.createElement(TaskEditModal, {
+    task: editTask,
+    team: team,
+    onSave: patch => {
+      onEditTask(editTask.id, patch);
+      setEditTask(null);
+    },
+    onClose: () => setEditTask(null)
+  }), modal && modal !== "weekly" && React.createElement(Modal, {
+    title: modal === "add" ? "팀원 추가" : "팀원 수정",
+    onClose: () => setModal(null)
+  }, React.createElement(FR, {
+    label: "\uC774\uB984 (\uD55C\uAD6D\uC5B4)"
+  }, React.createElement("input", {
+    className: "inp",
+    value: form.name,
+    onChange: e => setForm(f => ({
+      ...f,
+      name: e.target.value
+    })),
+    placeholder: "\uBC15\uD61C\uC5F0"
+  })), React.createElement(FR, {
+    label: "\uC5ED\uD560"
+  }, React.createElement("input", {
+    className: "inp",
+    value: form.role,
+    onChange: e => setForm(f => ({
+      ...f,
+      role: e.target.value
+    })),
+    placeholder: "HR \uB9E4\uB2C8\uC800"
+  })), React.createElement(FR, {
+    label: "\uCEEC\uB7EC"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("input", {
+    type: "color",
+    value: form.color,
+    onChange: e => setForm(f => ({
+      ...f,
+      color: e.target.value
+    })),
+    style: {
+      width: 36,
+      height: 36,
+      border: "1px solid var(--border2)",
+      borderRadius: 8,
+      cursor: "pointer",
+      padding: 3
+    }
+  }), React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontFamily: "'DM Mono',monospace"
+    }
+  }, form.color))), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end",
+      marginTop: 14
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setModal(null)
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: save
+  }, "\uC800\uC7A5"))), showWeekly && React.createElement("div", {
+    className: "modal-ov",
+    onClick: () => setShowWeekly(false)
+  }, React.createElement("div", {
+    className: "modal-box fadein",
+    style: {
+      width: "min(720px,96vw)",
+      maxHeight: "90vh"
+    },
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "modal-hd"
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "modal-title"
+  }, "주간 보고 요약 — " + weekLabel), React.createElement("div", {
+    className: "modal-sub"
+  }, reportWeekRange.start + " ~ " + reportWeekRange.end)), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      alignItems: "center"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: handleCopy,
+    style: {
+      minWidth: 80
+    }
+  }, copied ? "복사됨!" : "텍스트 복사"), React.createElement("button", {
+    onClick: () => setShowWeekly(false),
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      border: "1px solid var(--border2)",
+      background: "var(--sky-l)",
+      color: "var(--t2)",
+      cursor: "pointer",
+      fontSize: 14,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "X"))), React.createElement("div", {
+    style: {
+      padding: "10px 22px",
+      borderBottom: "1px solid var(--border)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "var(--bg)"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => shiftReportWeek(-1),
+    style: {
+      fontWeight: 700
+    }
+  }, "\u2039 \uC774\uC804 \uC8FC"), React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "var(--sky-deep)"
+    }
+  }, weekLabel), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, reportWeekRange.start + " ~ " + reportWeekRange.end)), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => shiftReportWeek(1),
+    style: {
+      fontWeight: 700
+    }
+  }, "\uB2E4\uC74C \uC8FC \u203A")), React.createElement("div", {
+    style: {
+      padding: "16px 22px",
+      overflowY: "auto",
+      maxHeight: "calc(90vh - 130px)"
+    }
+  }, weeklySummary.map(m => React.createElement("div", {
+    key: m.id,
+    style: {
+      marginBottom: 18,
+      borderRadius: 12,
+      border: "1px solid " + m.color + "30",
+      overflow: "hidden"
+    }
+  }, React.createElement("div", {
+    style: {
+      padding: "10px 14px",
+      background: m.color + "10",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      borderBottom: "1px solid " + m.color + "20"
+    }
+  }, React.createElement(Av, {
+    name: m.name,
+    color: m.color,
+    size: 26
+  }), React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: m.color
+    }
+  }, m.name), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, m.role)), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, "이번 주 " + m.thisWeekTasks.length + "건 / 다음 주 " + m.nextWeekTasks.length + "건")), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 0
+    }
+  }, React.createElement("div", {
+    style: {
+      padding: "12px 14px",
+      borderRight: "1px solid var(--border)"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#16A34A",
+      textTransform: "uppercase",
+      letterSpacing: ".06em",
+      marginBottom: 8,
+      display: "flex",
+      alignItems: "center",
+      gap: 5
+    }
+  }, React.createElement("span", {
+    style: {
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: "#16A34A",
+      display: "inline-block"
+    }
+  }), weekLabel + " 일정 (" + m.thisWeekTasks.length + "건)"), m.thisWeekTasks.length === 0 ? React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)"
+    }
+  }, "\uC77C\uC815 \uC5C6\uC74C") : m.thisWeekTasks.map(t => {
+    const done = ts[t.id] === "completed";
+    return React.createElement("div", {
+      key: t.id,
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 6,
+        marginBottom: 5
+      }
+    }, React.createElement("span", {
+      style: {
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        background: done ? "#16A34A" : "#CBD5E1",
+        flexShrink: 0,
+        marginTop: 5
+      }
+    }), React.createElement("div", null, React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: done ? "var(--t3)" : "var(--text)",
+        fontWeight: 500,
+        textDecoration: done ? "line-through" : "none"
+      }
+    }, t.task), React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "var(--t3)",
+        display: "flex",
+        gap: 6
+      }
+    }, React.createElement("span", null, t.due), React.createElement("span", {
+      style: {
+        color: done ? "#16A34A" : "#F59E0B",
+        fontWeight: 700
+      }
+    }, done ? "[완료]" : "[미완료]"))));
+  })), React.createElement("div", {
+    style: {
+      padding: "12px 14px"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "var(--sky-d)",
+      textTransform: "uppercase",
+      letterSpacing: ".06em",
+      marginBottom: 8,
+      display: "flex",
+      alignItems: "center",
+      gap: 5
+    }
+  }, React.createElement("span", {
+    style: {
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: "var(--sky-d)",
+      display: "inline-block"
+    }
+  }), "다음 주 일정 (" + m.nextWeekTasks.length + "건)"), m.nextWeekTasks.length === 0 ? React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)"
+    }
+  }, "\uC77C\uC815 \uC5C6\uC74C") : m.nextWeekTasks.map(t => {
+    const done = ts[t.id] === "completed";
+    return React.createElement("div", {
+      key: t.id,
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 6,
+        marginBottom: 5
+      }
+    }, React.createElement("span", {
+      style: {
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        background: done ? "#16A34A" : "var(--sky-d)",
+        flexShrink: 0,
+        marginTop: 5
+      }
+    }), React.createElement("div", null, React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: done ? "var(--t3)" : "var(--text)",
+        fontWeight: 500,
+        textDecoration: done ? "line-through" : "none"
+      }
+    }, t.task), React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "var(--t3)",
+        display: "flex",
+        gap: 6
+      }
+    }, React.createElement("span", null, t.due), React.createElement("span", {
+      style: {
+        color: done ? "#16A34A" : "#F59E0B",
+        fontWeight: 700
+      }
+    }, done ? "[완료]" : "[미완료]"))));
+  }))))), weeklySummary.length === 0 && React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "32px 0",
+      color: "var(--t3)"
+    }
+  }, "\uD300\uC6D0 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")))));
+}
+function PageHistory({
+  adminName,
+  setAdminName,
+  apiRows,
+  setApiRows,
+  apiStatus,
+  setApiStatus,
+  apiUrl,
+  setApiUrl
+}) {
+  const [vLoad, setVLoad] = useState({});
+  const [showUrlEdit, setShowUrlEdit] = useState(false);
+  const [fMonth, setFMonth] = useState("ALL");
+  const [fMgr, setFMgr] = useState("ALL");
+  const [fRefl, setFRefl] = useState("ALL");
+  const [showAdd, setShowAdd] = useState(false);
+  const EMPTY = {
+    reflectMonth: "",
+    writer: "",
+    manager: "",
+    isReflected: "",
+    department: "",
+    employeeId: "",
+    targetName: "",
+    content: "",
+    amount: "",
+    etc: ""
+  };
+  const [newRow, setNewRow] = useState({
+    ...EMPTY
+  });
+  const [addLoading, setAddLoading] = useState(false);
+  function fetchData(url) {
+    setApiStatus("loading");
+    fetch(url || apiUrl).then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(data => {
+      const rows = Array.isArray(data) ? data : data.data || [];
+      setApiRows(rows.map((r, i) => ({
+        rowIndex: r.rowIndex || i + 2,
+        ...r
+      })));
+      setApiStatus("ok");
+    }).catch(() => setApiStatus("err"));
+  }
+  useEffect(() => {
+    if (apiStatus === "idle") fetchData();
+  }, []);
+  const months = useMemo(() => [...new Set((apiRows || []).map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const managers = useMemo(() => [...new Set((apiRows || []).map(r => String(r.manager || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const reflOpts = useMemo(() => [...new Set((apiRows || []).map(r => String(r.isReflected || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const filtered = useMemo(() => (apiRows || []).filter(r => {
+    if (fMonth !== "ALL" && String(r.reflectMonth || "").trim() !== fMonth) return false;
+    if (fMgr !== "ALL" && String(r.manager || "").trim() !== fMgr) return false;
+    if (fRefl !== "ALL" && String(r.isReflected || "").trim() !== fRefl) return false;
+    return true;
+  }), [apiRows, fMonth, fMgr, fRefl]);
+  async function postAction(body) {
+    return fetch(apiUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(body)
+    });
+  }
+  async function toggleV1(row) {
+    const k = "v1_" + row.rowIndex;
+    setVLoad(p => ({
+      ...p,
+      [k]: true
+    }));
+    const v1Name = String(row.manager || adminName || "담당자").trim();
+    const v1Label = v1Name + " 확인 완료";
+    setApiRows(prev => prev.map(r => {
+      if (r.rowIndex !== row.rowIndex) return r;
+      if (!r.verify1Done) return {
+        ...r,
+        verify1Done: true,
+        verify1By: v1Label,
+        verify1At: nowIso().slice(0, 16).replace("T", " ")
+      };
+      return {
+        ...r,
+        verify1Done: false,
+        verify1By: "",
+        verify1At: "",
+        verify2Done: false,
+        verify2By: "",
+        verify2At: ""
+      };
+    }));
+    try {
+      await postAction({
+        action: "verify1",
+        rowIndex: row.rowIndex,
+        verifyBy: v1Label
+      });
+    } catch (e) {}
+    setVLoad(p => ({
+      ...p,
+      [k]: false
+    }));
+  }
+  async function toggleV2(row) {
+    if (!row.verify1Done) return;
+    const k = "v2_" + row.rowIndex;
+    setVLoad(p => ({
+      ...p,
+      [k]: true
+    }));
+    const V2_NAME = "박혜연 확인 완료";
+    setApiRows(prev => prev.map(r => {
+      if (r.rowIndex !== row.rowIndex) return r;
+      if (!r.verify2Done) return {
+        ...r,
+        verify2Done: true,
+        verify2By: V2_NAME,
+        verify2At: nowIso().slice(0, 16).replace("T", " ")
+      };
+      return {
+        ...r,
+        verify2Done: false,
+        verify2By: "",
+        verify2At: ""
+      };
+    }));
+    try {
+      await postAction({
+        action: "verify2",
+        rowIndex: row.rowIndex,
+        verifyBy: V2_NAME
+      });
+    } catch (e) {}
+    setVLoad(p => ({
+      ...p,
+      [k]: false
+    }));
+  }
+  async function submitNewRow() {
+    if (!newRow.targetName || !newRow.reflectMonth) return alert("급여반영월과 대상자는 필수입니다.");
+    setAddLoading(true);
+    try {
+      await postAction({
+        action: "append",
+        ...newRow
+      });
+      setApiRows(prev => [...prev, {
+        ...newRow,
+        rowIndex: prev.length + 2,
+        verify1Done: false,
+        verify1By: "",
+        verify1At: "",
+        verify2Done: false,
+        verify2By: "",
+        verify2At: ""
+      }]);
+      setNewRow({
+        ...EMPTY
+      });
+      setShowAdd(false);
+    } catch (e) {
+      alert("제출 실패: " + e.message);
+    }
+    setAddLoading(false);
+  }
+  function downloadHistoryExcel() {
+    const headers = ["급여반영월", "작성자", "담당자", "반영/구분", "사업부", "사번", "대상자", "내용", "금액", "기타", "1차검증_완료", "1차검증_담당자", "1차검증_일시", "2차검증_완료", "2차검증_담당자", "2차검증_일시"];
+    const data = [headers];
+    filtered.forEach(r => {
+      data.push([r.reflectMonth || "", r.writer || "", r.manager || "", r.isReflected || "", r.department || "", r.employeeId || "", r.targetName || "", r.content || "", r.amount || "", r.etc || "", r.verify1Done ? "완료" : "미완료", r.verify1By || "", String(r.verify1At || "").slice(0, 16), r.verify2Done ? "완료" : "미완료", r.verify2By || "", String(r.verify2At || "").slice(0, 16)]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "업무이력");
+    const today = new Date();
+    const ds = today.getFullYear() + String(today.getMonth() + 1).padStart(2, "0") + String(today.getDate()).padStart(2, "0");
+    XLSX.writeFile(wb, "업무이력_특이사항_관리_리스트_" + ds + ".xlsx");
+  }
+  const DATA_COLS = [{
+    key: "reflectMonth",
+    label: "급여반영월",
+    letter: "A",
+    mw: 90
+  }, {
+    key: "writer",
+    label: "작성자",
+    letter: "B",
+    mw: 70
+  }, {
+    key: "manager",
+    label: "담당자",
+    letter: "C",
+    mw: 80
+  }, {
+    key: "isReflected",
+    label: "반영/구분",
+    letter: "D",
+    mw: 100,
+    badge: true
+  }, {
+    key: "department",
+    label: "사업부",
+    letter: "E",
+    mw: 70
+  }, {
+    key: "employeeId",
+    label: "사번",
+    letter: "F",
+    mw: 80,
+    mono: true
+  }, {
+    key: "targetName",
+    label: "대상자",
+    letter: "G",
+    mw: 80
+  }, {
+    key: "content",
+    label: "내용",
+    letter: "H",
+    mw: 150
+  }, {
+    key: "amount",
+    label: "금액",
+    letter: "I",
+    mw: 90,
+    amount: true
+  }, {
+    key: "etc",
+    label: "기타",
+    letter: "J",
+    mw: 80
+  }];
+  const TH = {
+    background: "var(--sky-d)",
+    borderRight: "1px solid rgba(255,255,255,.15)",
+    padding: "7px 10px",
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#fff",
+    whiteSpace: "nowrap",
+    textAlign: "left"
+  };
+  const v1done = (apiRows || []).filter(r => r.verify1Done).length;
+  const v2done = (apiRows || []).filter(r => r.verify2Done).length;
+  const isMR = r => MOVE_TYPES.includes(String(r.isReflected || "").trim());
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement("div", {
+    style: {
+      padding: "9px 14px",
+      borderRadius: 9,
+      border: "1px solid",
+      marginBottom: 12,
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      fontSize: 11,
+      background: apiStatus === "ok" ? "#F0FDF4" : apiStatus === "err" ? "#FEF2F2" : "var(--sky-l)",
+      borderColor: apiStatus === "ok" ? "#BBF7D0" : apiStatus === "err" ? "#FECACA" : "var(--sky-m)",
+      color: apiStatus === "ok" ? "#16A34A" : apiStatus === "err" ? "#DC2626" : "var(--sky-d)"
+    }
+  }, React.createElement("div", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: "currentColor",
+      flexShrink: 0,
+      animation: apiStatus === "loading" ? "pulse 1s infinite" : "none"
+    }
+  }), React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, apiStatus === "loading" ? "로딩 중..." : apiStatus === "ok" ? "연결 완료 — 총 " + (apiRows || []).length + "건 · 1차완료 " + v1done + "건 · 2차완료 " + v2done + "건" : apiStatus === "err" ? "API 연결 실패" : "API 대기 중"), React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setShowUrlEdit(p => !p)
+  }, "URL \uC124\uC815"), React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: () => fetchData()
+  }, "\uC0C8\uB85C\uACE0\uCE68")), showUrlEdit && React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      borderRadius: 9,
+      border: "1px solid var(--sky-m)",
+      background: "var(--sky-l)",
+      marginBottom: 12,
+      display: "flex",
+      gap: 8,
+      alignItems: "flex-end"
+    }
+  }, React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, React.createElement("div", {
+    className: "inp-lbl"
+  }, "Google Apps Script \uBC30\uD3EC URL"), React.createElement("input", {
+    className: "inp",
+    style: {
+      fontSize: 11
+    },
+    value: apiUrl,
+    onChange: e => setApiUrl(e.target.value)
+  })), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: () => {
+      fetchData(apiUrl);
+      setShowUrlEdit(false);
+    }
+  }, "\uC800\uC7A5 + \uBD88\uB7EC\uC624\uAE30")), React.createElement("div", {
+    className: "card"
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, React.createElement("div", {
+    className: "card-icon"
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 20 20",
+    fill: "none"
+  }, React.createElement("rect", {
+    x: "2",
+    y: "2",
+    width: "16",
+    height: "16",
+    rx: "2",
+    fill: "#34A853"
+  }), React.createElement("path", {
+    d: "M5 7h10M5 10h10M5 13h6",
+    stroke: "white",
+    strokeWidth: "1.5",
+    strokeLinecap: "round"
+  }))), "\uAE09\uC5EC \uD2B9\uC774\uC0AC\uD56D \u2014 Google Sheets \uC5F0\uB3D9"), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      alignItems: "center"
+    }
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      background: "var(--sky-l)",
+      border: "1px solid var(--sky-m)",
+      borderRadius: 8,
+      padding: "4px 10px"
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: "var(--sky-d)"
+    }
+  }, "\uAC80\uC99D\uC790"), React.createElement("input", {
+    value: adminName,
+    onChange: e => setAdminName(e.target.value),
+    placeholder: "\uBC15\uD61C\uC5F0",
+    style: {
+      fontSize: 11,
+      outline: "none",
+      width: 68,
+      background: "transparent",
+      color: "var(--text)",
+      fontFamily: "inherit",
+      border: "none"
+    }
+  })), React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: downloadHistoryExcel,
+    style: {
+      fontSize: 10,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), "\uC5D1\uC140 \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: () => setShowAdd(p => !p)
+  }, showAdd ? "X 닫기" : "+ 신규 제출"))), showAdd && React.createElement("div", {
+    style: {
+      padding: "14px 18px",
+      borderBottom: "1px solid var(--border)",
+      background: "#F8FBFF"
+    }
+  }, React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(5,1fr)",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, DATA_COLS.map(c => React.createElement("div", {
+    key: c.key
+  }, React.createElement("div", {
+    className: "inp-lbl"
+  }, c.letter + "열 · " + c.label), React.createElement("input", {
+    className: "inp",
+    style: {
+      fontSize: 11,
+      padding: "6px 9px"
+    },
+    placeholder: c.label,
+    value: newRow[c.key] || "",
+    onChange: e => setNewRow(p => ({
+      ...p,
+      [c.key]: e.target.value
+    }))
+  })))), React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 8
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setShowAdd(false)
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: submitNewRow,
+    disabled: addLoading
+  }, addLoading ? "제출 중..." : "Google Sheet에 제출"))), React.createElement("div", {
+    style: {
+      padding: "8px 18px",
+      borderBottom: "1px solid var(--border)",
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, React.createElement("select", {
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: fMonth,
+    onChange: e => setFMonth(e.target.value)
+  }, React.createElement("option", {
+    value: "ALL"
+  }, "\uC6D4 \uC804\uCCB4"), months.map(m => React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), React.createElement("select", {
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: fMgr,
+    onChange: e => setFMgr(e.target.value)
+  }, React.createElement("option", {
+    value: "ALL"
+  }, "\uB2F4\uB2F9\uC790 \uC804\uCCB4"), managers.map(m => React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), React.createElement("select", {
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: fRefl,
+    onChange: e => setFRefl(e.target.value)
+  }, React.createElement("option", {
+    value: "ALL"
+  }, "\uAD6C\uBD84 \uC804\uCCB4"), reflOpts.map(r => React.createElement("option", {
+    key: r,
+    value: r
+  }, r))), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => {
+      setFMonth("ALL");
+      setFMgr("ALL");
+      setFRefl("ALL");
+    }
+  }, "\uCD08\uAE30\uD654")), React.createElement("div", {
+    style: {
+      padding: "0 18px 16px"
+    }
+  }, React.createElement("div", {
+    className: "xwrap",
+    style: {
+      marginTop: 10
+    }
+  }, React.createElement("table", {
+    className: "xtbl"
+  }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 36
+    }
+  }, "#"), DATA_COLS.map(c => React.createElement("th", {
+    key: c.key,
+    className: "xcl",
+    style: {
+      minWidth: c.mw
+    }
+  }, c.letter)), React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 110,
+      background: "#E0E7FF",
+      color: "#4F46E5",
+      fontWeight: 800
+    }
+  }, "K"), React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 110,
+      background: "#D1FAE5",
+      color: "#059669",
+      fontWeight: 800
+    }
+  }, "L")), React.createElement("tr", null, React.createElement("th", {
+    style: {
+      ...TH,
+      textAlign: "center",
+      minWidth: 36
+    }
+  }, "\uD589"), DATA_COLS.map(c => React.createElement("th", {
+    key: c.key,
+    style: {
+      ...TH,
+      minWidth: c.mw
+    }
+  }, c.label)), React.createElement("th", {
+    style: {
+      ...TH,
+      background: "#4F46E5",
+      minWidth: 110
+    }
+  }, "1\uCC28 \uAC80\uC99D"), React.createElement("th", {
+    style: {
+      ...TH,
+      background: "#059669",
+      minWidth: 110
+    }
+  }, "2\uCC28 \uAC80\uC99D"))), React.createElement("tbody", null, filtered.length === 0 ? React.createElement("tr", null, React.createElement("td", {
+    colSpan: DATA_COLS.length + 3,
+    style: {
+      textAlign: "center",
+      padding: 30,
+      color: "var(--t3)",
+      fontSize: 12
+    }
+  }, apiStatus === "loading" ? "로딩 중..." : apiStatus === "err" ? "API 연결 실패" : "데이터 없음")) : filtered.map((row, ri) => {
+    const v1 = !!row.verify1Done,
+      v2 = !!row.verify2Done;
+    const v1k = "v1_" + row.rowIndex,
+      v2k = "v2_" + row.rowIndex;
+    return React.createElement("tr", {
+      key: ri,
+      className: v2 ? "row-v2" : "",
+      style: {
+        background: isMR(row) ? "rgba(14,165,233,.03)" : "transparent"
+      }
+    }, React.createElement("td", {
+      className: "rnum"
+    }, ri + 1), DATA_COLS.map(c => React.createElement("td", {
+      key: c.key,
+      style: {
+        minWidth: c.mw,
+        maxWidth: c.key === "content" ? 180 : undefined
+      }
+    }, c.badge ? isMR(row) ? React.createElement("span", {
+      className: "badge " + (TYPE_S[String(row[c.key] || "")] ? TYPE_S[String(row[c.key] || "")].cls : "bdg-gray"),
+      style: {
+        fontSize: 10
+      }
+    }, row[c.key] || "—") : React.createElement("span", {
+      className: "badge bdg-gray",
+      style: {
+        fontSize: 10
+      }
+    }, row[c.key] || "—") : c.amount ? React.createElement("span", {
+      style: {
+        fontFamily: "'DM Mono',monospace",
+        fontWeight: 700,
+        color: "var(--sky-d)"
+      }
+    }, fmtAmt(row[c.key])) : c.mono ? React.createElement("span", {
+      style: {
+        fontFamily: "'DM Mono',monospace",
+        fontSize: 11
+      }
+    }, row[c.key] || "—") : React.createElement("span", {
+      style: {
+        display: "block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, fmtCell(row[c.key])))), React.createElement("td", {
+      style: {
+        minWidth: 110,
+        background: v1 ? "#EEF2FF" : "transparent"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 3
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }
+    }, React.createElement("button", {
+      onClick: () => toggleV1(row),
+      disabled: !!vLoad[v1k],
+      style: {
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        border: "1.5px solid " + (v1 ? "#6366F1" : "#CBD5E1"),
+        background: v1 ? "#6366F1" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        flexShrink: 0
+      }
+    }, v1 && React.createElement("svg", {
+      width: "10",
+      height: "10",
+      viewBox: "0 0 10 10",
+      fill: "none"
+    }, React.createElement("path", {
+      d: "M2 5l2.5 2.5 4-4",
+      stroke: "white",
+      strokeWidth: "1.8",
+      strokeLinecap: "round"
+    }))), React.createElement("span", {
+      style: {
+        fontSize: 10.5,
+        fontWeight: 700,
+        color: v1 ? "#4F46E5" : "var(--t3)"
+      }
+    }, vLoad[v1k] ? "..." : v1 ? row.verify1By || "완료" : "미완료")), v1 && React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "#6366F1",
+        paddingLeft: 22
+      }
+    }, React.createElement("div", null, row.verify1By || "—"), React.createElement("div", {
+      style: {
+        color: "var(--t3)"
+      }
+    }, String(row.verify1At || "").slice(0, 16))))), React.createElement("td", {
+      style: {
+        minWidth: 110,
+        background: v2 ? "#ECFDF5" : !v1 ? "#F8FAFC" : "transparent"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 3
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }
+    }, React.createElement("button", {
+      onClick: () => toggleV2(row),
+      disabled: !v1 || !!vLoad[v2k],
+      style: {
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        border: "1.5px solid " + (v2 ? "#10B981" : !v1 ? "#E2E8F0" : "#CBD5E1"),
+        background: v2 ? "#10B981" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: v1 ? "pointer" : "not-allowed",
+        flexShrink: 0,
+        opacity: !v1 ? 0.4 : 1
+      }
+    }, v2 && React.createElement("svg", {
+      width: "10",
+      height: "10",
+      viewBox: "0 0 10 10",
+      fill: "none"
+    }, React.createElement("path", {
+      d: "M2 5l2.5 2.5 4-4",
+      stroke: "white",
+      strokeWidth: "1.8",
+      strokeLinecap: "round"
+    }))), React.createElement("span", {
+      style: {
+        fontSize: 10.5,
+        fontWeight: 700,
+        color: v2 ? "#059669" : !v1 ? "#CBD5E1" : "var(--t3)"
+      }
+    }, vLoad[v2k] ? "..." : v2 ? row.verify2By || "완료" : !v1 ? "대기" : "미완료")), v2 && React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "#059669",
+        paddingLeft: 22
+      }
+    }, React.createElement("div", null, row.verify2By || "—"), React.createElement("div", {
+      style: {
+        color: "var(--t3)"
+      }
+    }, String(row.verify2At || "").slice(0, 16))), !v1 && !v2 && React.createElement("div", {
+      style: {
+        fontSize: 9.5,
+        color: "#CBD5E1",
+        paddingLeft: 22
+      }
+    }, "1\uCC28 \uC644\uB8CC \uD6C4 \uAC00\uB2A5"))));
+  })))))));
+}
+const MEMO_LS_KEY = "hr_shine_memos_v1";
+const MEMO_CATS = ["일반 메모", "노무/법적 이슈", "임직원 요청", "시스템 에러", "제도 변경"];
+const CAT_CLR = {
+  "일반 메모": "#64748B",
+  "노무/법적 이슈": "#DC2626",
+  "임직원 요청": "#0EA5E9",
+  "시스템 에러": "#D97706",
+  "제도 변경": "#8B5CF6"
+};
+function loadMemos() {
+  const m = SheetDB.get("memos");
+  return Array.isArray(m) ? m : [];
+}
+function saveMemos(m) {
+  SheetDB.setCollection("memos", m || []);
+}
+function PageMemo({
+  selectedDate,
+  cloudRev
+}) {
+  const [memos, setMemos] = useState(() => loadMemos());
+  const [author, setAuthor] = useState("");
+  const [cat, setCat] = useState(MEMO_CATS[0]);
+  const [date, setDate] = useState(selectedDate || todayStr);
+  const [content, setContent] = useState("");
+  const [remark, setRemark] = useState("");
+  const [err, setErr] = useState("");
+  const [filterCat, setFilterCat] = useState("ALL");
+  const [filterDate, setFilterDate] = useState("");
+  const fromCloud = useRef(false);
+  useEffect(() => {
+    setDate(selectedDate || todayStr);
+  }, [selectedDate]);
+  useSkipFirstEffect(() => {
+    if (fromCloud.current) {
+      fromCloud.current = false;
+      return;
+    }
+    saveMemos(memos);
+  }, [memos]);
+  useSkipFirstEffect(() => {
+    const fresh = loadMemos();
+    setMemos(prev => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      fromCloud.current = true;
+      return fresh;
+    });
+  }, [cloudRev]);
+  function addMemo() {
+    if (!author.trim()) {
+      setErr("작성자를 입력해주세요.");
+      return;
+    }
+    if (!content.trim()) {
+      setErr("업무 내용을 입력해주세요.");
+      return;
+    }
+    const m = {
+      id: uid(),
+      author: author.trim(),
+      cat,
+      date,
+      content: content.trim(),
+      remark: remark.trim(),
+      createdAt: nowIso()
+    };
+    setMemos(p => [m, ...(p || [])]);
+    setContent("");
+    setRemark("");
+    setErr("");
+  }
+  function delMemo(id) {
+    if (confirm("이 메모를 삭제할까요?")) setMemos(p => (p || []).filter(m => m.id !== id));
+  }
+  const filtered = (memos || []).filter(m => {
+    if (filterCat !== "ALL" && m.cat !== filterCat) return false;
+    if (filterDate && m.date !== filterDate) return false;
+    return true;
+  });
+  const TH = {
+    background: "var(--sky-d)",
+    borderRight: "1px solid rgba(255,255,255,.15)",
+    padding: "7px 10px",
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#fff",
+    whiteSpace: "nowrap",
+    textAlign: "left"
+  };
+  function downloadMemoExcel() {
+    const headers = ["작성자", "카테고리", "일자", "업무 내용", "비고", "등록일시"];
+    const data = [headers];
+    (memos || []).forEach(m => {
+      data.push([m.author || "", m.cat || "", m.date || "", m.content || "", m.remark || "", String(m.createdAt || "").slice(0, 16).replace("T", " ")]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const colWidths = [{
+      wch: 12
+    }, {
+      wch: 18
+    }, {
+      wch: 12
+    }, {
+      wch: 50
+    }, {
+      wch: 25
+    }, {
+      wch: 18
+    }];
+    ws["!cols"] = colWidths;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "특이사항");
+    const d = new Date();
+    const ds = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    XLSX.writeFile(wb, "특이사항_관리_내역_리스트_" + ds + ".xlsx");
+  }
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, React.createElement("div", {
+    className: "card-icon"
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none"
+  }, React.createElement("rect", {
+    x: "2",
+    y: "2",
+    width: "12",
+    height: "12",
+    rx: "2",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.3"
+  }), React.createElement("path", {
+    d: "M5 6h6M5 9h4",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.2",
+    strokeLinecap: "round"
+  }))), "\uD2B9\uC774\uC0AC\uD56D \uC785\uB825"), React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, "총 " + (memos || []).length + "건 저장됨")), React.createElement("div", {
+    className: "card-body"
+  }, React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 10,
+      marginBottom: 10
+    }
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uC791\uC131\uC790"), React.createElement("input", {
+    className: "inp",
+    placeholder: "\uC608: \uBC15\uD61C\uC5F0",
+    value: author,
+    onChange: e => setAuthor(e.target.value)
+  })), React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uCE74\uD14C\uACE0\uB9AC"), React.createElement("input", {
+    className: "inp",
+    placeholder: "\uC608: \uB178\uBB34 \uC774\uC288, \uC77C\uBC18 \uBA54\uBAA8 \uB4F1",
+    value: cat,
+    onChange: e => setCat(e.target.value),
+    list: "memo-cat-hints"
+  }), React.createElement("datalist", {
+    id: "memo-cat-hints"
+  }, MEMO_CATS.map(c => React.createElement("option", {
+    key: c,
+    value: c
+  })))), React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uC77C\uC790"), React.createElement("input", {
+    type: "date",
+    className: "inp",
+    value: date,
+    onChange: e => setDate(e.target.value)
+  }))), React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "2fr 1fr",
+      gap: 10,
+      marginBottom: 10
+    }
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uC5C5\uBB34 \uB0B4\uC6A9"), React.createElement("input", {
+    className: "inp",
+    placeholder: "\uD2B9\uC774\uC0AC\uD56D \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694",
+    value: content,
+    onChange: e => setContent(e.target.value),
+    onKeyDown: e => e.key === "Enter" && addMemo()
+  })), React.createElement("div", null, React.createElement("div", {
+    className: "inp-lbl"
+  }, "\uBE44\uACE0"), React.createElement("input", {
+    className: "inp",
+    placeholder: "\uCD94\uAC00 \uBA54\uBAA8 (\uC120\uD0DD)",
+    value: remark,
+    onChange: e => setRemark(e.target.value),
+    onKeyDown: e => e.key === "Enter" && addMemo()
+  }))), err && React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#DC2626",
+      background: "#FEF2F2",
+      border: "1px solid #FECACA",
+      borderRadius: 8,
+      padding: "7px 12px",
+      marginBottom: 8
+    }
+  }, err), React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "flex-end"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: addMemo
+  }, "+ \uD2B9\uC774\uC0AC\uD56D \uB4F1\uB85D")))), React.createElement("div", {
+    className: "card"
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, React.createElement("div", {
+    className: "card-icon"
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 16 16",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M2 4h12M2 8h8M2 12h10",
+    stroke: "#0EA5E9",
+    strokeWidth: "1.3",
+    strokeLinecap: "round"
+  }))), "특이사항 목록 — " + filtered.length + "건"), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      alignItems: "center"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: downloadMemoExcel,
+    style: {
+      fontSize: 10,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), "\uC5D1\uC140 \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("select", {
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: filterCat,
+    onChange: e => setFilterCat(e.target.value)
+  }, React.createElement("option", {
+    value: "ALL"
+  }, "\uCE74\uD14C\uACE0\uB9AC \uC804\uCCB4"), MEMO_CATS.map(c => React.createElement("option", {
+    key: c,
+    value: c
+  }, c))), React.createElement("input", {
+    type: "date",
+    className: "inp",
+    style: {
+      width: "auto",
+      fontSize: 11
+    },
+    value: filterDate,
+    onChange: e => setFilterDate(e.target.value),
+    title: "\uB0A0\uC9DC \uD544\uD130"
+  }), (filterCat !== "ALL" || filterDate) && React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => {
+      setFilterCat("ALL");
+      setFilterDate("");
+    }
+  }, "\uCD08\uAE30\uD654"))), React.createElement("div", {
+    className: "card-body",
+    style: {
+      padding: 0
+    }
+  }, React.createElement("div", {
+    className: "xwrap",
+    style: {
+      border: "none",
+      borderRadius: 0
+    }
+  }, React.createElement("table", {
+    className: "xtbl",
+    style: {
+      minWidth: 800
+    }
+  }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", {
+    className: "xcl",
+    style: {
+      minWidth: 36
+    }
+  }, "#"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 80
+    }
+  }, "\uC791\uC131\uC790"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 110
+    }
+  }, "\uCE74\uD14C\uACE0\uB9AC"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 100
+    }
+  }, "\uC77C\uC790"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 260
+    }
+  }, "\uC5C5\uBB34 \uB0B4\uC6A9"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 150
+    }
+  }, "\uBE44\uACE0"), React.createElement("th", {
+    style: {
+      ...TH,
+      minWidth: 50,
+      textAlign: "center"
+    }
+  }, "\uC0AD\uC81C"))), React.createElement("tbody", null, filtered.length === 0 ? React.createElement("tr", null, React.createElement("td", {
+    colSpan: 7,
+    style: {
+      textAlign: "center",
+      padding: 32,
+      color: "var(--t3)",
+      fontSize: 12
+    }
+  }, "\uB4F1\uB85D\uB41C \uD2B9\uC774\uC0AC\uD56D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC704 \uC591\uC2DD\uC73C\uB85C \uCD94\uAC00\uD574\uC8FC\uC138\uC694.")) : filtered.map((m, ri) => {
+    const clr = CAT_CLR[m.cat] || "#64748B";
+    return React.createElement("tr", {
+      key: m.id
+    }, React.createElement("td", {
+      className: "rnum"
+    }, ri + 1), React.createElement("td", {
+      style: {
+        fontWeight: 600
+      }
+    }, m.author), React.createElement("td", null, React.createElement("span", {
+      style: {
+        fontSize: 9.5,
+        padding: "2px 8px",
+        borderRadius: 20,
+        background: clr + "18",
+        color: clr,
+        fontWeight: 700,
+        border: "1px solid " + clr + "30",
+        whiteSpace: "nowrap"
+      }
+    }, m.cat)), React.createElement("td", {
+      className: "mono",
+      style: {
+        fontSize: 11
+      }
+    }, m.date), React.createElement("td", {
+      style: {
+        maxWidth: 260
+      }
+    }, React.createElement("span", {
+      style: {
+        display: "block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, m.content)), React.createElement("td", {
+      style: {
+        color: "var(--t3)",
+        maxWidth: 150
+      }
+    }, React.createElement("span", {
+      style: {
+        display: "block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, m.remark || "—")), React.createElement("td", {
+      style: {
+        textAlign: "center"
+      }
+    }, React.createElement("button", {
+      onClick: () => delMemo(m.id),
+      style: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        border: "1px solid #FECACA",
+        background: "#FEF2F2",
+        color: "#EF4444",
+        cursor: "pointer",
+        fontSize: 11,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }
+    }, "\xD7")));
+  })))))));
+}
+const GUIDE_LS_KEY = "hr_shine_guide_text";
+const DEFAULT_GUIDE = `HR SHINE DESK v15 사용 가이드
+
+[ 전체 워크플로우 ]
+달력 기반 To-Do 모니터링과 당일/당월 진행률을 한눈에 확인합니다.
+캘린더 날짜를 클릭하면 해당 날짜의 일정과 담당자를 확인할 수 있습니다.
++ 일정 추가: 일회성 또는 반복 정기 일정을 생성합니다.
+정기 일정 관리: 월간/분기별/반기별/연간 주기 일정을 관리합니다.
+
+[ 인사이동 관리 ]
+Google Sheets 데이터를 기반으로 입사/퇴사/육아휴직 등 인사이동 대상자를
+자동 필터링하여 표시합니다. 행을 클릭하면 담당자별 체크리스트가 열립니다.
+공통 루틴 설정: 유형별 공통 체크리스트 항목을 전체 적용합니다.
+
+[ 팀원별 진척도 ]
+날짜 네비게이터로 날짜를 이동하며 팀원별 당일 일정 진행 현황을 확인합니다.
+각 카드에서 체크박스로 완료 여부를 실시간으로 업데이트할 수 있습니다.
+
+[ 업무 이력 ]
+Google Sheets와 실시간 연동하여 급여 특이사항 데이터를 조회합니다.
+1차/2차 검증 버튼으로 데이터 검토 상태를 관리합니다.
+
+[ 특이사항 관리 ]
+HR 업무 중 발생하는 메모, 이슈, 요청사항을 카테고리별로 기록합니다.
+모든 데이터는 구글 스프레드시트에 실시간으로 공유 저장되어, 팀원 누구나 동일한 데이터를 보고 함께 편집할 수 있습니다.`;
+function loadGuide() {
+  const g = SheetDB.get("guide");
+  return typeof g === "string" && g ? g : DEFAULT_GUIDE;
+}
+function saveGuide(t) {
+  SheetDB.setCollection("guide", t);
+}
+function GuideModal({
+  onClose
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(() => loadGuide());
+  const [saved, setSaved] = useState(false);
+  function handleSave() {
+    saveGuide(text);
+    setSaved(true);
+    setEditing(false);
+    setTimeout(() => setSaved(false), 2000);
+  }
+  function handleReset() {
+    if (confirm("기본 가이드로 초기화할까요?")) setText(DEFAULT_GUIDE);
+  }
+  return React.createElement("div", {
+    className: "modal-ov",
+    onClick: onClose
+  }, React.createElement("div", {
+    className: "modal-box fadein",
+    style: {
+      width: "min(700px,96vw)"
+    },
+    onClick: e => e.stopPropagation()
+  }, React.createElement("div", {
+    className: "modal-hd"
+  }, React.createElement("div", null, React.createElement("div", {
+    className: "modal-title"
+  }, "HR SHINE DESK \uC0AC\uC6A9 \uAC00\uC774\uB4DC"), React.createElement("div", {
+    className: "modal-sub"
+  }, "v15 \xB7 \uD074\uB9AD\uD558\uC5EC \uB0B4\uC6A9\uC744 \uC790\uC720\uB86D\uAC8C \uC218\uC815\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4")), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      alignItems: "center"
+    }
+  }, saved && React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#16A34A",
+      fontWeight: 700
+    }
+  }, "\uC800\uC7A5 \uC644\uB8CC!"), editing ? React.createElement(React.Fragment, null, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: handleReset,
+    style: {
+      fontSize: 10
+    }
+  }, "\uCD08\uAE30\uD654"), React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: handleSave
+  }, "\uC800\uC7A5"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setEditing(false)
+  }, "\uCDE8\uC18C")) : React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: () => setEditing(true)
+  }, "\uC218\uC815\uD558\uAE30"), React.createElement("button", {
+    onClick: onClose,
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      border: "1px solid var(--border2)",
+      background: "var(--sky-l)",
+      color: "var(--t2)",
+      cursor: "pointer",
+      fontSize: 14,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "X"))), React.createElement("div", {
+    style: {
+      padding: "20px 24px"
+    }
+  }, editing ? React.createElement("textarea", {
+    value: text,
+    onChange: e => setText(e.target.value),
+    style: {
+      width: "100%",
+      minHeight: 420,
+      fontSize: 12.5,
+      lineHeight: 1.7,
+      fontFamily: "'Noto Sans KR',system-ui,sans-serif",
+      color: "var(--text)",
+      border: "1.5px solid var(--sky)",
+      borderRadius: 10,
+      padding: "14px 16px",
+      resize: "vertical",
+      outline: "none",
+      background: "var(--s2)"
+    }
+  }) : React.createElement("pre", {
+    style: {
+      fontSize: 12.5,
+      lineHeight: 1.8,
+      color: "var(--text)",
+      fontFamily: "'Noto Sans KR',system-ui,sans-serif",
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-word",
+      background: "var(--bg)",
+      borderRadius: 10,
+      padding: "16px 18px",
+      border: "1px solid var(--border)"
+    }
+  }, text), !editing && React.createElement("div", {
+    style: {
+      marginTop: 12,
+      fontSize: 11,
+      color: "var(--t3)",
+      textAlign: "center"
+    }
+  }, "\uC218\uC815\uD558\uAE30 \uBC84\uD2BC\uC744 \uD074\uB9AD\uD558\uBA74 \uB0B4\uC6A9\uC744 \uC790\uC720\uB86D\uAC8C \uD3B8\uC9D1\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4"))));
+}
+const GAS_DRIVE_URL = SHARED_API_URL;
+// Supabase Storage 경로 안전화: 폴더/파일명을 URL 세그먼트로 인코딩(슬래시는 유지)
+function supaEncodePath(seg) {
+  return String(seg || "").split("/").map(encodeURIComponent).join("/");
+}
+// 폴더명 안전화: "2026.05" → "202605" (마침표/특수문자 제거, 숫자만)
+function ymFolder(curYM) {
+  const d = String(curYM || "").replace(/\D/g, "");
+  return d || String(curYM || "").replace(/[^0-9A-Za-z_-]/g, "_");
+}
+// 파일명 안전화: Supabase Storage 키 허용 문자만 남김
+//  - 대괄호 [ ] → 소괄호 ( ) (허용 문자라 태그 모양 유지)
+//  - 그 외 금지 문자(# % { } \ ^ ~ ` < > | ")는 _ 로 치환 (공백/마침표/한글은 그대로 허용)
+function safeStorageName(name) {
+  return String(name == null ? "" : name)
+    .trim()
+    .replace(/[\[\]()]/g, "_")          // 모든 괄호 [ ] ( ) 완전 제거 → _
+    .replace(/[#%{}\\^~`<>|"]/g, "_")   // 기타 금지 문자 → _
+    .replace(/\s+/g, "_")               // 공백(띄어쓰기) → _
+    .replace(/_+/g, "_")                // 연속된 _ 는 하나로
+    .replace(/_+(\.[^.]*)$/, "$1")      // 확장자 바로 앞의 _ 제거 (예: "_PA_.xls" → "_PA.xls")
+    .replace(/^_+|_+$/g, "");           // 파일명 양 끝의 _ 제거
+}
+// ASCII 전용 파일명(한글 미허용 환경 폴백): 비ASCII 제거 + 종류 영문 접두어 + 타임스탬프
+function asciiStorageName(kind, originalName) {
+  const roman = { "건강보험": "health", "국민연금": "pension", "급여대장": "payroll" }[kind] || "ins";
+  let s = String(originalName || "")
+    .replace(/[^\x20-\x7E]/g, "")        // 한글 등 ASCII 외 문자 제거
+    .replace(/[\[\]()#%{}\\^~`<>|"\s]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const dot = s.lastIndexOf(".");
+  const ext = dot > 0 ? s.slice(dot) : "";
+  let base = (dot > 0 ? s.slice(0, dot) : s).replace(/_+$/, "");
+  if (!base) base = "file";
+  return (roman + "_" + base + "_" + Date.now() + ext).replace(/_+/g, "_");
+}
+// 원본 파일 업로드 → Supabase Storage 버킷에 바이너리 직접 PUT(없으면 생성, 있으면 덮어쓰기)
+async function driveUploadFile(file, curYM, kind) {
+  const cfg = SheetDB.storage;
+  if (!cfg || !cfg.enabled || !cfg.url || !cfg.key) {
+    throw new Error("Supabase Storage 설정이 없습니다. (SUPABASE_URL/KEY 확인)");
+  }
+  const folder = ymFolder(curYM);                       // 2026.05 → 202605
+  const taggedName = (kind ? "[" + kind + "] " : "") + file.name;
+  const cleanedFileName = safeStorageName(taggedName);  // 괄호/공백 제거(한글 유지)
+  const headers = {
+    "Authorization": "Bearer " + cfg.key,
+    "apikey": cfg.key,
+    "x-upsert": "true",
+    "Content-Type": file.type || "application/octet-stream",
+    "Cache-Control": "3600"
+  };
+  // 파일명 전체를 encodeURIComponent 로 감싸 유니코드(한글)·특수문자를 안전한 주소로 전송
+  const putOnce = fname => fetch(
+    cfg.url + "/storage/v1/object/" + cfg.bucket + "/" + folder + "/" + encodeURIComponent(fname),
+    { method: "POST", headers: headers, body: file }
+  );
+  let res = await putOnce(cleanedFileName);
+  // 일부 Supabase 환경은 키에 한글(비ASCII)을 거부(InvalidKey 400) → ASCII 전용 이름으로 자동 재시도
+  if (!res.ok && res.status === 400) {
+    const asciiName = asciiStorageName(kind, file.name);
+    const res2 = await putOnce(asciiName);
+    if (res2.ok) return { ok: true, fileName: asciiName };
+    res = res2;
+  }
+  if (!res.ok) {
+    let detail = "";
+    try { detail = await res.text(); } catch (_) {}
+    throw new Error("업로드 실패(" + res.status + ") " + detail);
+  }
+  return { ok: true, fileName: cleanedFileName };
+}
+function driveFileKind(name) {
+  const n = String(name || "");
+  if (n.indexOf("[건강보험]") >= 0 || n.indexOf("건강") >= 0 || n.indexOf("health") >= 0) return "건강보험";
+  if (n.indexOf("[국민연금]") >= 0 || n.indexOf("연금") >= 0 || n.indexOf("pension") >= 0) return "국민연금";
+  if (n.indexOf("[급여대장]") >= 0 || n.indexOf("급여") >= 0 || n.indexOf("payroll") >= 0) return "급여대장";
+  return "기타";
+}
+// 해당 월(curYM) 폴더의 원본 파일 목록 조회 → Supabase Storage list API
+async function driveFetchFileList(curYM) {
+  const cfg = SheetDB.storage;
+  if (!cfg || !cfg.enabled || !cfg.url || !cfg.key) return [];
+  const folder = ymFolder(curYM); // 업로드와 동일하게 202605 형태
+  try {
+    const res = await fetch(cfg.url + "/storage/v1/object/list/" + cfg.bucket, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + cfg.key,
+        "apikey": cfg.key,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        prefix: folder + "/",
+        limit: 200,
+        sortBy: { column: "created_at", order: "desc" }
+      })
+    });
+    if (!res.ok) return [];
+    const items = await res.json();
+    return (Array.isArray(items) ? items : []).filter(it => it && it.name && it.id !== null).map(it => {
+      const fileName = it.name; // prefix 제외된 순수 파일명
+      const publicUrl = cfg.url + "/storage/v1/object/public/" + cfg.bucket + "/" + folder + "/" + encodeURIComponent(fileName);
+      return {
+        id: it.id || folder + "/" + fileName,
+        name: fileName,
+        url: publicUrl,
+        downloadUrl: publicUrl,
+        createdAt: it.created_at || it.updated_at || (it.metadata && it.metadata.lastModified) || null
+      };
+    });
+  } catch (e) {
+    return [];
+  }
+}
+const INS_LS_PREFIX = "hr_shine_4ins_";
+const INS_REASONS = ["전월반영", "차월반영", "중도퇴사정산", "직접입력"];
+const INS_TYPES = ["건강보험", "국민연금"];
+function fmtNum(v) {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = Number(String(v).replace(/,/g, "").replace(/\s/g, "").trim());
+  return isNaN(n) ? 0 : n;
+}
+function fmtKRW(v) {
+  return Number(v || 0).toLocaleString("ko-KR");
+}
+function maskRRN(v) {
+  const s = rrnDigits(v);
+  if (s.length >= 13) return s.slice(0, 6) + "-" + s[6] + "******";
+  if (s.length >= 7) return s.slice(0, 6) + "-" + "*".repeat(s.length - 6);
+  return s || String(v || "");
+}
+function rrnDigits(v) {
+  return String(v == null ? "" : v).replace(/[^0-9]/g, "");
+}
+function getInsKey(ym) {
+  return INS_LS_PREFIX + ym;
+}
+function loadInsData(ym) {
+  const d = SheetDB.getIns(ym);
+  return d || null;
+}
+function saveInsData(ym, data) {
+  SheetDB.setCollection("ins:" + ym, data);
+}
+function deleteInsData(ym) {
+  SheetDB.setCollection("ins:" + ym, null);
+}
+function detectInsType(data) {
+  const h0 = String((data[0] || []).join("|"));
+  if (/국민연금|연금보험/.test(h0)) return "국민연금";
+  if (/건강보험|요양보험/.test(h0)) return "건강보험";
+  let healthScore = 0,
+    pensionScore = 0;
+  for (let i = 1; i < Math.min(10, data.length); i++) {
+    const r = data[i] || [];
+    if (fmtNum(r[38]) > 1000) healthScore += 2;
+    if (fmtNum(r[18]) > 1000) pensionScore += 2;
+    if (fmtNum(r[6]) === 0 && fmtNum(r[2]) > 0) pensionScore++;
+    if (String(r[6] || "").trim().length > 0) healthScore++;
+  }
+  return pensionScore > healthScore ? "국민연금" : "건강보험";
+}
+function parsePubHealth(data) {
+  const rrnMap = {};
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (!r || !r[6] || String(r[6]).trim() === "") continue;
+    const rk = rrnDigits(r[7]);
+    const key = rk || "_" + String(r[6]).trim() + "_" + i;
+    if (rrnMap[key]) {
+      rrnMap[key].health += fmtNum(r[38]);
+      rrnMap[key].care += fmtNum(r[39]);
+      rrnMap[key].healthAdj += fmtNum(r[40]) + fmtNum(r[42]);
+      rrnMap[key].careAdj += fmtNum(r[41]) + fmtNum(r[43]);
+    } else {
+      rrnMap[key] = {
+        yearMonth: String(r[0] || "").trim(),
+        name: String(r[6] || "").trim(),
+        rrn: rk,
+        dept: String(r[8] || "").trim(),
+        empId: String(r[9] || "").trim(),
+        health: fmtNum(r[38]),
+        care: fmtNum(r[39]),
+        healthAdj: fmtNum(r[40]) + fmtNum(r[42]),
+        careAdj: fmtNum(r[41]) + fmtNum(r[43]),
+        pension: 0,
+        insType: "건강보험"
+      };
+    }
+  }
+  return Object.values(rrnMap);
+}
+function parsePubPension(data) {
+  const rrnMap = {};
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (!r || !r[2] || String(r[2]).trim() === "") continue;
+    const rk = rrnDigits(r[3]);
+    const key = rk || "_" + String(r[2]).trim() + "_" + i;
+    if (rrnMap[key]) {
+      rrnMap[key].pension += fmtNum(r[18]);
+    } else {
+      rrnMap[key] = {
+        yearMonth: String(r[0] || "").trim(),
+        name: String(r[2] || "").trim(),
+        rrn: rk,
+        dept: String(r[4] || "").trim(),
+        empId: String(r[5] || "").trim(),
+        health: 0,
+        care: 0,
+        healthAdj: 0,
+        careAdj: 0,
+        pension: fmtNum(r[18]),
+        insType: "국민연금"
+      };
+    }
+  }
+  return Object.values(rrnMap);
+}
+function parsePay(data) {
+  if (!data || !data.length) return [];
+  let hdr = -1;
+  for (let i = 0; i < Math.min(12, data.length); i++) {
+    const j = (data[i] || []).map(c => String(c || "")).join("|");
+    if (/성\s*명|이\s*름/.test(j)) {
+      hdr = i;
+      break;
+    }
+  }
+  const H = hdr >= 0 ? (data[hdr] || []).map(c => String(c || "").replace(/\s/g, "")) : [];
+  const col = (fixed, keys) => {
+    if (hdr >= 0) {
+      for (let c = 0; c < H.length; c++) for (const k of keys) if (H[c].indexOf(k) >= 0) return c;
+    }
+    return fixed;
+  };
+  const cName = col(2, ["성명", "이름"]);
+  const cRrn = col(3, ["주민"]);
+  const cEmp = col(1, ["사번", "사원번호", "사원코드"]);
+  const cDept = col(10, ["사업부", "부서", "소속", "부문", "팀", "법인"]);
+  const cYm = col(0, ["귀속", "연월", "년월"]);
+  const start = hdr >= 0 ? hdr + 1 : 1;
+  const map = {};
+  for (let i = start; i < data.length; i++) {
+    const r = data[i];
+    const name = r ? String(r[cName] || "").trim() : "";
+    if (!name) continue;
+    const rk = rrnDigits(r[cRrn]);
+    const key = rk || "_" + name + "_" + i;
+    const row = {
+      yearMonth: String(r[cYm] || "").trim(),
+      empId: String(r[cEmp] || "").trim(),
+      name,
+      rrn: rk,
+      dept: String(r[cDept] || "").trim(),
+      pension: fmtNum(r[4]) + fmtNum(r[5]),
+      health: fmtNum(r[6]),
+      care: fmtNum(r[8]),
+      healthAdj: fmtNum(r[7]),
+      careAdj: fmtNum(r[9])
+    };
+    if (map[key]) {
+      map[key].pension += row.pension;
+      map[key].health += row.health;
+      map[key].care += row.care;
+      map[key].healthAdj += row.healthAdj;
+      map[key].careAdj += row.careAdj;
+    } else {
+      map[key] = row;
+    }
+  }
+  return Object.values(map);
+}
+function mergeData(pubRows, payRows) {
+  const P = Array.isArray(pubRows) ? pubRows : [];
+  const Y = Array.isArray(payRows) ? payRows : [];
+  const pubMap = {},
+    payMap = {},
+    order = [],
+    seen = {};
+  const add = k => {
+    if (!seen[k]) {
+      seen[k] = 1;
+      order.push(k);
+    }
+  };
+  P.forEach((r, i) => {
+    if (!r || typeof r !== "object") return;
+    const k = rrnDigits(r.rrn) || "_p_" + (r.name || "무명") + "_" + i;
+    pubMap[k] = r;
+    add(k);
+  });
+  Y.forEach((r, i) => {
+    if (!r || typeof r !== "object") return;
+    const k = rrnDigits(r.rrn) || "_y_" + (r.name || "무명") + "_" + i;
+    payMap[k] = r;
+    add(k);
+  });
+  const num = v => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
+  const rows = order.map(k => {
+    const pub = pubMap[k] || {};
+    const pay = payMap[k] || null;
+    const ph = num(pub.health),
+      pc = num(pub.care),
+      pha = num(pub.healthAdj),
+      pca = num(pub.careAdj),
+      pp = num(pub.pension);
+    const yH = pay ? num(pay.health) : 0,
+      yC = pay ? num(pay.care) : 0,
+      yHA = pay ? num(pay.healthAdj) : 0,
+      yCA = pay ? num(pay.careAdj) : 0,
+      yP = pay ? num(pay.pension) : 0;
+    const diffHealth = ph - yH,
+      diffCare = pc - yC,
+      diffHealthAdj = pha - yHA,
+      diffCareAdj = pca - yCA,
+      diffPension = pp - yP;
+    const mismatch = diffHealth !== 0 || diffCare !== 0 || diffHealthAdj !== 0 || diffCareAdj !== 0 || diffPension !== 0;
+    return {
+      name: String(pub.name || pay && pay.name || ""),
+      dept: String(pub.dept || pay && pay.dept || ""),
+      rrn: k.charAt(0) === "_" ? String(pub.rrn || pay && pay.rrn || "") : k,
+      empId: String(pub.empId || pay && pay.empId || ""),
+      yearMonth: String(pub.yearMonth || pay && pay.yearMonth || ""),
+      insType: String(pub.insType || ""),
+      health: ph,
+      care: pc,
+      healthAdj: pha,
+      careAdj: pca,
+      pension: pp,
+      pay,
+      diffHealth,
+      diffCare,
+      diffHealthAdj,
+      diffCareAdj,
+      diffPension,
+      mismatch,
+      autoOk: !mismatch,
+      id: k
+    };
+  });
+  rows.sort((a, b) => {
+    if (b.mismatch !== a.mismatch) return (b.mismatch ? 1 : 0) - (a.mismatch ? 1 : 0);
+    return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+  });
+  return rows;
+}
+function Page4Insurance({
+  cloudRev
+}) {
+  const nowYM = () => {
+    const d = new Date();
+    return d.getFullYear() + "." + String(d.getMonth() + 1).padStart(2, "0");
+  };
+  const [curYM, setCurYM] = useState(nowYM);
+  const [pubTypeOverride, setPubTypeOverride] = useState("auto");
+  const [merged, setMerged] = useState([]);
+  const [hasData, setHasData] = useState(false);
+  const [reasons, setReasons] = useState({});
+  const [customReasons, setCustomReasons] = useState({});
+  const [checked, setChecked] = useState({});
+  const [loading, setLoading] = useState("");
+  const [error, setError] = useState("");
+  const [deptView, setDeptView] = useState("전체");
+  const [deptDeleteSel, setDeptDeleteSel] = useState("");
+  const [rawPub, setRawPub] = useState([]);
+  const [rawPay, setRawPay] = useState([]);
+  const [driveFiles, setDriveFiles] = useState([]);
+  const [driveUploading, setDriveUploading] = useState(false);
+  const [driveStatus, setDriveStatus] = useState("");
+  const [driveErr, setDriveErr] = useState("");
+  const [showDrivePanel, setShowDrivePanel] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState("");
+  const [savedAt, setSavedAt] = useState("");
+  function shiftMonth(dir) {
+    const [y, m] = curYM.split(".").map(Number);
+    let nm = m + dir;
+    let ny = y;
+    if (nm > 12) {
+      nm = 1;
+      ny++;
+    } else if (nm < 1) {
+      nm = 12;
+      ny--;
+    }
+    setCurYM(ny + "." + String(nm).padStart(2, "0"));
+  }
+  const liveRef = useRef({
+    pub: [],
+    pay: [],
+    reasons: {},
+    custom: {},
+    checked: {}
+  });
+  const isLoadingRef = useRef(false);
+  const driveQueue = useRef(Promise.resolve());
+  const commitChain = useRef(Promise.resolve());
+  const commitPending = useRef(0);
+  function insKeyOf(r) {
+    return rrnDigits(r.rrn) || "_" + (r.name || "") + "_" + (r.empId || "") + "_" + (r.dept || "");
+  }
+  function insSerial(o) {
+    return JSON.stringify({
+      pub: o && o.pub || [],
+      pay: o && o.pay || [],
+      reasons: o && o.reasons || {},
+      custom: o && o.custom || {},
+      checked: o && o.checked || {}
+    });
+  }
+  function insHas(o) {
+    return !!(o && (Array.isArray(o.pub) && o.pub.length || Array.isArray(o.pay) && o.pay.length));
+  }
+  function applyLoad(d) {
+    const arr = v => (Array.isArray(v) ? v : []).filter(r => r && typeof r === "object");
+    const pub = arr(d && d.pub),
+      pay = arr(d && d.pay);
+    const obj = v => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    const m = mergeData(pub, pay);
+    const chk = {
+      ...obj(d && d.checked)
+    };
+    m.forEach(r => {
+      if (r.autoOk) chk[r.id] = true;
+    });
+    liveRef.current = {
+      pub,
+      pay,
+      reasons: obj(d && d.reasons),
+      custom: obj(d && d.custom),
+      checked: chk
+    };
+    setRawPub(pub);
+    setRawPay(pay);
+    setReasons(liveRef.current.reasons);
+    setCustomReasons(liveRef.current.custom);
+    setChecked(chk);
+    setMerged(m);
+    setHasData(pub.length > 0 || pay.length > 0);
+    setError("");
+  }
+  function commit(next) {
+    const arr = v => (Array.isArray(v) ? v : []).filter(r => r && typeof r === "object");
+    const pub = arr(next && next.pub),
+      pay = arr(next && next.pay);
+    const m = mergeData(pub, pay);
+    const chk = {
+      ...(next.checked || {})
+    };
+    m.forEach(r => {
+      if (r.autoOk) chk[r.id] = true;
+    });
+    const payload = {
+      pub,
+      pay,
+      reasons: next.reasons || {},
+      custom: next.custom || {},
+      checked: chk
+    };
+    liveRef.current = payload;
+    setRawPub(pub);
+    setRawPay(pay);
+    setReasons(payload.reasons);
+    setCustomReasons(payload.custom);
+    setChecked(chk);
+    setMerged(m);
+    setHasData(pub.length > 0 || pay.length > 0);
+    setError("");
+    isLoadingRef.current = true;
+    commitPending.current++;
+    commitChain.current = commitChain.current.then(async () => {
+      await SheetDB.pushNow("ins:" + curYM, payload.pub.length > 0 || payload.pay.length > 0 ? payload : null);
+      setSavedAt(new Date().toLocaleTimeString("ko-KR"));
+    }).catch(() => {}).finally(() => {
+      commitPending.current = Math.max(0, commitPending.current - 1);
+      if (commitPending.current === 0) isLoadingRef.current = false;
+    });
+    return commitChain.current;
+  }
+  useEffect(() => {
+    isLoadingRef.current = false;
+    try {
+      applyLoad(loadInsData(curYM) || {});
+    } catch (err) {
+      console.error("4대보험 로드 오류:", err);
+      setError("데이터를 불러오는 중 오류가 발생했습니다: " + (err && err.message || err));
+    }
+    setDriveFiles([]);
+    driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
+  }, [curYM]);
+  useSkipFirstEffect(() => {
+    try {
+      if (isLoadingRef.current) return;
+      const fresh = loadInsData(curYM);
+      if (!insHas(fresh) && insHas(liveRef.current)) return;
+      if (insSerial(fresh) === insSerial(liveRef.current)) return;
+      applyLoad(fresh || {});
+    } catch (err) {
+      console.error("4대보험 동기화 오류:", err);
+    }
+  }, [cloudRev]);
+  async function forceReloadMonth() {
+    setSyncing(true);
+    isLoadingRef.current = false;
+    try {
+      await SheetDB.refresh();
+    } catch (_) {}
+    const fresh = loadInsData(curYM);
+    if (insHas(fresh) || !insHas(liveRef.current)) applyLoad(fresh || {});
+    driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
+    setLastSync(new Date().toLocaleTimeString("ko-KR"));
+    setSyncing(false);
+  }
+  function readExcel(file, cb) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {
+          type: "array"
+        });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {
+          header: 1,
+          defval: ""
+        });
+        cb(data);
+      } catch (ex) {
+        setError("파일 읽기 실패: " + ex.message);
+        setLoading("");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function uploadToDrive(file, kind) {
+    if (!(SheetDB.storage && SheetDB.storage.enabled)) return; // Supabase Storage 미설정 시 스킵
+    setDriveUploading(true);
+    setDriveStatus("uploading");
+    driveQueue.current = driveQueue.current.then(() => driveUploadFile(file, curYM, kind)).then(() => {
+      setDriveStatus("done");
+      setDriveErr("");
+      return driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
+    }).catch((err) => {
+      setDriveStatus("err");
+      setDriveErr(String((err && (err.message || err)) || "알 수 없는 오류"));
+    }).finally(() => {
+      setDriveUploading(false);
+    });
+  }
+  // [월도 일치 보안] 업로드 파일의 귀속월(엑셀 A열)과 현재 검증 월(curYM)이 다르면 차단
+  function ym6_(str) {
+    const m = String(str == null ? "" : str).match(/(20\d{2})\s*[.\-\/년]?\s*(\d{1,2})/);
+    if (!m) return "";
+    const mm = String(parseInt(m[2], 10)).padStart(2, "0");
+    if (+mm < 1 || +mm > 12) return "";
+    return m[1] + mm;
+  }
+  function monthMismatch(data) {
+    const cur6 = ym6_(curYM);
+    if (!cur6) return false; // 현재 검증월을 못 읽으면 통과(차단 안 함)
+    let file6 = "";
+    for (let i = 0; i < (data || []).length; i++) {
+      const cell = data[i] && data[i][0] != null ? data[i][0] : "";
+      const v = ym6_(cell);
+      if (v) { file6 = v; break; } // A열(0번째 인덱스)에서 처음 발견한 귀속월(YYYYMM)
+    }
+    return !!file6 && file6 !== cur6; // 귀속월을 찾았는데 현재월과 다르면 true → 차단
+  }
+  function handlePub(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    isLoadingRef.current = true;
+    setLoading("공단 고지서 처리 중...");
+    setError("");
+    readExcel(f, data => {
+      try {
+        if (monthMismatch(data)) {
+          alert("업로드한 파일의 귀속월이 현재 검증 월(" + curYM + ")과 일치하지 않습니다.");
+          setLoading("");
+          isLoadingRef.current = false;
+          return;
+        }
+        const insType = pubTypeOverride === "auto" ? detectInsType(data) : pubTypeOverride;
+        const newRows = insType === "국민연금" ? parsePubPension(data) : parsePubHealth(data);
+        const map = {};
+        (liveRef.current.pub || []).forEach(r => {
+          map[insKeyOf(r)] = r;
+        });
+        newRows.forEach(r => {
+          const k = insKeyOf(r);
+          if (map[k]) {
+            const ex = map[k];
+            if (insType === "국민연금") {
+              map[k] = {
+                ...ex,
+                pension: r.pension,
+                insType: ex.insType === "건강보험" ? "건강+연금" : "국민연금"
+              };
+            } else {
+              map[k] = {
+                ...ex,
+                health: r.health,
+                care: r.care,
+                healthAdj: r.healthAdj,
+                careAdj: r.careAdj,
+                name: r.name,
+                dept: r.dept,
+                empId: r.empId,
+                yearMonth: r.yearMonth,
+                insType: ex.insType === "국민연금" ? "건강+연금" : "건강보험"
+              };
+            }
+          } else {
+            map[k] = {
+              ...r
+            };
+          }
+        });
+        const nextPub = Object.values(map);
+        setLoading("");
+        commit({
+          pub: nextPub,
+          pay: liveRef.current.pay,
+          reasons: liveRef.current.reasons,
+          custom: liveRef.current.custom,
+          checked: liveRef.current.checked
+        }).finally(() => {
+          uploadToDrive(f, insType);
+        });
+      } catch (ex) {
+        setError("공단 고지서 처리 실패: " + (ex && ex.message || ex));
+        setLoading("");
+        if (commitPending.current === 0) isLoadingRef.current = false;
+      }
+    });
+    e.target.value = "";
+  }
+  function handlePay(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    isLoadingRef.current = true;
+    setLoading("급여대장 처리 중...");
+    setError("");
+    readExcel(f, data => {
+      try {
+        if (monthMismatch(data)) {
+          alert("업로드한 파일의 귀속월이 현재 검증 월(" + curYM + ")과 일치하지 않습니다.");
+          setLoading("");
+          isLoadingRef.current = false;
+          return;
+        }
+        const newPayRows = parsePay(data);
+        if (newPayRows.length === 0) {
+          setError("급여대장에서 직원 행을 인식하지 못했습니다. 파일 양식(성명/주민번호/금액 열)을 확인해주세요.");
+          setLoading("");
+          if (commitPending.current === 0) isLoadingRef.current = false;
+          uploadToDrive(f, "급여대장");
+          return;
+        }
+        const newDepts = new Set(newPayRows.filter(r => (r.dept || "").trim()).map(r => r.dept.trim()));
+        const map = {};
+        (liveRef.current.pay || []).forEach(r => {
+          const d = (r.dept || "").trim();
+          if (d && newDepts.has(d)) return;
+          map[insKeyOf(r)] = r;
+        });
+        newPayRows.forEach(r => {
+          map[insKeyOf(r)] = {
+            ...r
+          };
+        });
+        const nextPay = Object.values(map);
+        setLoading("");
+        commit({
+          pub: liveRef.current.pub,
+          pay: nextPay,
+          reasons: liveRef.current.reasons,
+          custom: liveRef.current.custom,
+          checked: liveRef.current.checked
+        }).finally(() => {
+          uploadToDrive(f, "급여대장");
+        });
+      } catch (ex) {
+        setError("급여대장 처리 실패: " + (ex && ex.message || ex));
+        setLoading("");
+        if (commitPending.current === 0) isLoadingRef.current = false;
+      }
+    });
+    e.target.value = "";
+  }
+  function handleDelete() {
+    if (!confirm(curYM + " 데이터를 모두 삭제할까요?")) return;
+    commit({
+      pub: [],
+      pay: [],
+      reasons: {},
+      custom: {},
+      checked: {}
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
+  }
+  function handleDeptDelete() {
+    if (!deptDeleteSel) {
+      alert("삭제할 사업부를 선택해주세요.");
+      return;
+    }
+    if (!confirm(curYM + " 데이터에서 " + deptDeleteSel + " 사업부를 삭제할까요?")) return;
+    const nextPub = (liveRef.current.pub || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
+    const nextPay = (liveRef.current.pay || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
+    commit({
+      pub: nextPub,
+      pay: nextPay,
+      reasons: liveRef.current.reasons,
+      custom: liveRef.current.custom,
+      checked: liveRef.current.checked
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
+    setDeptDeleteSel("");
+  }
+  function downloadSample(type) {
+    let headers, sampleRow, sheetName;
+    if (type === "건강보험") {
+      headers = ["A고지년월", "...", "...", "...", "...", "...", "G이름", "H주민번호", "I사업부", "J사번", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "AM건강보험", "AN요양보험", "AO건강정산1", "AP요양정산1", "AQ건강정산2", "AR요양정산2"];
+      sampleRow = ["2025.05", "", "", "", "", "", "홍길동", "900101-1234567", "PA", "EMP001", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 100000, 8500, 0, 0, 0, 0];
+      sheetName = "건강보험 고지서";
+    } else if (type === "국민연금") {
+      headers = ["A고지년월", "...", "C이름", "D주민번호", "E사업부", "F사번", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "...", "S국민연금"];
+      sampleRow = ["2025.05", "", "홍길동", "900101-1234567", "PA", "EMP001", "", "", "", "", "", "", "", "", "", "", "", "", 95000];
+      sheetName = "국민연금 고지서";
+    } else {
+      headers = ["A고지년월", "B사번", "C이름", "D주민번호", "E국민연금(예수금)", "F국민연금정산", "G건강보험(예수금)", "H건강정산", "I요양보험(예수금)", "J요양정산", "K사업부"];
+      sampleRow = ["2025.05", "EMP001", "홍길동", "900101-1234567", 95000, 2000, 100000, 0, 8500, 0, "PA"];
+      sheetName = "급여대장";
+    }
+    const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, sheetName + "_샘플양식.xlsx");
+  }
+  function downloadUploadedHealthGovExcel() {
+    const healthRows = rawPub.filter(r => r.insType === "건강보험" || r.insType === "건강+연금" || r.health > 0 || r.care > 0 || r.healthAdj > 0 || r.careAdj > 0);
+    if (healthRows.length === 0) {
+      alert("해당 월(" + curYM + ")에 업로드된 건강보험 고지서 데이터가 없습니다.");
+      return;
+    }
+    const hdr = ["A고지년월", "", "", "", "", "", "G이름", "H주민번호", "I사업부", "J사번", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "AM건강보험", "AN요양보험", "AO건강정산", "AP요양정산", "AQ건강정산2", "AR요양정산2"];
+    const rows = [hdr];
+    healthRows.forEach(r => {
+      const row = Array(44).fill("");
+      row[0] = r.yearMonth;
+      row[6] = r.name;
+      row[7] = r.rrn;
+      row[8] = r.dept;
+      row[9] = r.empId;
+      row[38] = r.health;
+      row[39] = r.care;
+      row[40] = r.healthAdj;
+      row[41] = r.careAdj;
+      row[42] = 0;
+      row[43] = 0;
+      rows.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "건강보험 고지서");
+    XLSX.writeFile(wb, "업로드원본_건강보험_고지서_" + curYM + ".xlsx");
+  }
+  function downloadUploadedPensionGovExcel() {
+    const pensionRows = rawPub.filter(r => r.insType === "국민연금" || r.insType === "건강+연금" || r.pension > 0);
+    if (pensionRows.length === 0) {
+      alert("해당 월(" + curYM + ")에 업로드된 국민연금 고지서 데이터가 없습니다.");
+      return;
+    }
+    const hdr = ["A고지년월", "", "C이름", "D주민번호", "E사업부", "F사번", "", "", "", "", "", "", "", "", "", "", "", "", "S국민연금"];
+    const rows = [hdr];
+    pensionRows.forEach(r => {
+      const row = Array(19).fill("");
+      row[0] = r.yearMonth;
+      row[2] = r.name;
+      row[3] = r.rrn;
+      row[4] = r.dept;
+      row[5] = r.empId;
+      row[18] = r.pension;
+      rows.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "국민연금 고지서");
+    XLSX.writeFile(wb, "업로드원본_국민연금_고지서_" + curYM + ".xlsx");
+  }
+  function setReason(id, v) {
+    const reasons2 = {
+      ...liveRef.current.reasons,
+      [id]: v
+    };
+    const checked2 = v ? {
+      ...liveRef.current.checked,
+      [id]: true
+    } : liveRef.current.checked;
+    commit({
+      pub: liveRef.current.pub,
+      pay: liveRef.current.pay,
+      reasons: reasons2,
+      custom: liveRef.current.custom,
+      checked: checked2
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
+  }
+  function setCustom(id, v) {
+    const custom2 = {
+      ...liveRef.current.custom,
+      [id]: v
+    };
+    const checked2 = v.trim() ? {
+      ...liveRef.current.checked,
+      [id]: true
+    } : liveRef.current.checked;
+    commit({
+      pub: liveRef.current.pub,
+      pay: liveRef.current.pay,
+      reasons: liveRef.current.reasons,
+      custom: custom2,
+      checked: checked2
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
+  }
+  function toggleCheck(id) {
+    const checked2 = {
+      ...liveRef.current.checked,
+      [id]: !liveRef.current.checked[id]
+    };
+    commit({
+      pub: liveRef.current.pub,
+      pay: liveRef.current.pay,
+      reasons: liveRef.current.reasons,
+      custom: liveRef.current.custom,
+      checked: checked2
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
+  }
+  const depts = useMemo(() => ["전체", ...new Set(merged.map(r => r.dept || "미분류"))], [merged]);
+  const viewRows = useMemo(() => deptView === "전체" ? merged : merged.filter(r => (r.dept || "미분류") === deptView), [merged, deptView]);
+  const deptSummary = useMemo(() => {
+    const map = {};
+    merged.forEach(r => {
+      const d = r.dept || "미분류";
+      if (!map[d]) map[d] = {
+        dept: d,
+        pubH: 0,
+        pubC: 0,
+        pubHA: 0,
+        pubCA: 0,
+        pubP: 0,
+        payH: 0,
+        payC: 0,
+        payHA: 0,
+        payCA: 0,
+        payP: 0
+      };
+      map[d].pubH += r.health;
+      map[d].pubC += r.care;
+      map[d].pubHA += r.healthAdj;
+      map[d].pubCA += r.careAdj;
+      map[d].pubP += r.pension;
+      if (r.pay) {
+        map[d].payH += r.pay.health;
+        map[d].payC += r.pay.care;
+        map[d].payHA += r.pay.healthAdj;
+        map[d].payCA += r.pay.careAdj;
+        map[d].payP += r.pay.pension;
+      }
+    });
+    return Object.values(map).sort((a, b) => a.dept.localeCompare(b.dept, "ko"));
+  }, [merged]);
+  const mismatchCount = merged.filter(r => r.mismatch && !checked[r.id]).length;
+  const doneCount = merged.filter(r => checked[r.id]).length;
+  const TH = bg => ({
+    background: bg || "var(--sky-d)",
+    padding: "7px 8px",
+    fontSize: 9.5,
+    fontWeight: 700,
+    color: "#fff",
+    whiteSpace: "nowrap",
+    textAlign: "center",
+    borderRight: "1px solid rgba(255,255,255,.15)"
+  });
+  const TD_DIFF = v => {
+    const n = Number(v || 0);
+    return React.createElement("td", {
+      style: {
+        fontFamily: "'DM Mono',monospace",
+        fontWeight: 700,
+        textAlign: "right",
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        color: n > 0 ? "#DC2626" : n < 0 ? "#7C3AED" : "#94A3B8",
+        background: n !== 0 ? "rgba(220,38,38,.04)" : undefined,
+        whiteSpace: "nowrap"
+      }
+    }, n > 0 ? "+" : "", fmtKRW(n));
+  };
+  const TD_AMT = (v, clr) => React.createElement("td", {
+    style: {
+      fontFamily: "'DM Mono',monospace",
+      fontSize: 11,
+      fontWeight: 600,
+      textAlign: "right",
+      padding: "7px 8px",
+      borderBottom: "1px solid #E8EEF5",
+      color: clr || "var(--sky-d)",
+      whiteSpace: "nowrap"
+    }
+  }, fmtKRW(v));
+  const hasHealth = merged.some(r => r.insType === "건강보험" || r.health > 0 || r.care > 0 || r.pay && ((r.pay.health || 0) > 0 || (r.pay.care || 0) > 0));
+  const hasPension = merged.some(r => r.insType === "국민연금" || r.pension > 0 || r.pay && (r.pay.pension || 0) > 0);
+  function downloadVerificationExcel() {
+    const dept = deptView === "전체" ? "전체" : deptView;
+    const rows = viewRows;
+    const hasH = rows.some(r => r.insType === "건강보험" || r.health > 0 || r.care > 0);
+    const hasP = rows.some(r => r.insType === "국민연금" || r.pension > 0);
+    const headers = ["사업부", "이름", "주민번호(앞6자리)", "고지년월"];
+    if (hasH) headers.push("공단_건강", "공단_요양", "공단_건강정산", "공단_요양정산", "급여_건강", "급여_요양", "급여_건강정산", "급여_요양정산", "차액_건강", "차액_요양", "차액_건강정산", "차액_요양정산");
+    if (hasP) headers.push("공단_연금", "급여_연금", "차액_연금");
+    headers.push("사유", "직접입력사유", "검토상태");
+    const data = [headers];
+    rows.forEach(r => {
+      const rrn6 = String(r.rrn || "").replace(/-/g, "").slice(0, 6) + "*******";
+      const row = [r.dept || "", r.name || "", rrn6, r.yearMonth || ""];
+      if (hasH) row.push(r.health || 0, r.care || 0, r.healthAdj || 0, r.careAdj || 0, r.pay ? r.pay.health : 0, r.pay ? r.pay.care : 0, r.pay ? r.pay.healthAdj : 0, r.pay ? r.pay.careAdj : 0, r.diffHealth || 0, r.diffCare || 0, r.diffHealthAdj || 0, r.diffCareAdj || 0);
+      if (hasP) row.push(r.pension || 0, r.pay ? r.pay.pension : 0, r.diffPension || 0);
+      row.push(reasons[r.id] || "", customReasons[r.id] || "", checked[r.id] ? "검토완료" : r.autoOk ? "자동완료" : "검토대기");
+      data.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "상세비교");
+    const today = new Date();
+    const ds = today.getFullYear() + String(today.getMonth() + 1).padStart(2, "0") + String(today.getDate()).padStart(2, "0");
+    XLSX.writeFile(wb, "4대보험_검증_상세비교_" + dept + "_" + curYM + ".xlsx");
+  }
+  return React.createElement("div", {
+    className: "fadein"
+  }, React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 14,
+      background: "#fff",
+      border: "1px solid var(--border2)",
+      borderRadius: "var(--r)",
+      padding: "12px 18px",
+      boxShadow: "var(--sh)"
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => shiftMonth(-1),
+    style: {
+      fontWeight: 700
+    }
+  }, "\u2039 \uC774\uC804\uB2EC"), React.createElement("div", {
+    style: {
+      flex: 1,
+      textAlign: "center"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      color: "var(--sky-deep)",
+      letterSpacing: ".05em"
+    }
+  }, curYM, " 4\uB300\uBCF4\uD5D8 \uAC80\uC99D"), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      marginTop: 2
+    }
+  }, hasData ? merged.length + "명 검증 · 자동완료 " + merged.filter(r => r.autoOk).length + "건 · 불일치 " + merged.filter(r => r.mismatch).length + "건" : "데이터 없음 — 공단 고지서·급여대장을 업로드해주세요"), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      marginTop: 3,
+      fontWeight: 600,
+      color: SheetDB.getIns(curYM) ? "#16A34A" : "#DC2626"
+    }
+  }, "클라우드 공유: 이 달(" + curYM + ") " + (SheetDB.getIns(curYM) ? "데이터 있음 ●" : "데이터 없음 ○"), savedAt ? " · ✓ 검증 저장됨 " + savedAt : lastSync ? " · 마지막 동기화 " + lastSync : "")), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: forceReloadMonth,
+    disabled: syncing,
+    title: "\uC774 \uB2EC \uB370\uC774\uD130\uB97C \uC11C\uBC84\uC5D0\uC11C \uC989\uC2DC \uB2E4\uC2DC \uBD88\uB7EC\uC635\uB2C8\uB2E4",
+    style: {
+      fontWeight: 700
+    }
+  }, syncing ? "동기화 중…" : "↻ 이 달 새로고침"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => shiftMonth(1),
+    style: {
+      fontWeight: 700
+    }
+  }, "\uB2E4\uC74C\uB2EC \u203A")), React.createElement("div", {
+    style: {
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    style: {
+      fontSize: 10,
+      gap: 5,
+      display: "inline-flex",
+      alignItems: "center"
+    },
+    onClick: () => {
+      setShowDrivePanel(p => !p);
+      if (!showDrivePanel) driveFetchFileList(curYM).then(setDriveFiles);
+    }
+  }, React.createElement("svg", {
+    width: "13",
+    height: "13",
+    viewBox: "0 0 24 24",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M3 15l4-8 5 6 3-4 6 6H3z",
+    stroke: "#16A34A",
+    strokeWidth: "1.6",
+    strokeLinejoin: "round"
+  }), React.createElement("path", {
+    d: "M3 20h18",
+    stroke: "#16A34A",
+    strokeWidth: "1.4",
+    strokeLinecap: "round"
+  })), showDrivePanel ? "원본 파일 패널 닫기" : "원본 파일 보기(Supabase)"), driveUploading && React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "var(--sky-d)",
+      fontWeight: 600
+    }
+  }, "\uB4DC\uB77C\uC774\uBE0C \uC5C5\uB85C\uB4DC \uC911..."), driveStatus === "done" && !driveUploading && React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#16A34A",
+      fontWeight: 600
+    }
+  }, "\uB4DC\uB77C\uC774\uBE0C \uC5C5\uB85C\uB4DC \uC644\uB8CC"), driveStatus === "err" && !driveUploading && React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#DC2626",
+      fontWeight: 600
+    }
+  }, "\uB4DC\uB77C\uC774\uBE0C \uC5C5\uB85C\uB4DC \uC2E4\uD328: " + (driveErr || "(\uB85C\uCEEC \uC800\uC7A5\uC740 \uC815\uC0C1)"))), showDrivePanel && React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14,
+      borderTop: "3px solid #16A34A"
+    }
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title",
+    style: {
+      color: "#16A34A"
+    }
+  }, React.createElement("svg", {
+    width: "14",
+    height: "14",
+    viewBox: "0 0 24 24",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M3 15l4-8 5 6 3-4 6 6H3z",
+    stroke: "#16A34A",
+    strokeWidth: "1.6",
+    strokeLinejoin: "round"
+  })), "원본 파일 저장소 — " + curYM + " (Supabase)"), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    style: {
+      fontSize: 10
+    },
+    onClick: () => driveFetchFileList(curYM).then(setDriveFiles)
+  }, "\uC0C8\uB85C\uACE0\uCE68")), React.createElement("div", {
+    className: "card-body"
+  }, (() => {
+    if (GAS_DRIVE_URL === "여기에_GAS_배포_URL_입력") {
+      return React.createElement("div", {
+        style: {
+          textAlign: "center",
+          padding: "16px 0",
+          color: "var(--t3)",
+          fontSize: 12
+        }
+      }, "GAS URL\uC744 \uC124\uC815\uD558\uBA74 \uB4DC\uB77C\uC774\uBE0C \uD30C\uC77C \uBAA9\uB85D\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.");
+    }
+    const all = (driveFiles || []).slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const META = {
+      "건강보험": ["#0EA5E9", "#E0F2FE"],
+      "국민연금": ["#16A34A", "#F0FDF4"],
+      "급여대장": ["#8B5CF6", "#F5F3FF"],
+      "기타": ["#64748B", "#F1F5F9"]
+    };
+    const rows = [];
+    ["건강보험", "국민연금"].forEach(kind => {
+      const f = all.find(x => driveFileKind(x.name) === kind);
+      rows.push({
+        kind,
+        f,
+        label: "최신"
+      });
+    });
+    const seenName = {};
+    const pays = all.filter(x => driveFileKind(x.name) === "급여대장").filter(f => {
+      const nm = String(f.name || "");
+      if (seenName[nm]) return false;
+      seenName[nm] = 1;
+      return true;
+    });
+    if (pays.length === 0) {
+      rows.push({
+        kind: "급여대장",
+        f: null,
+        label: ""
+      });
+    } else pays.forEach(f => rows.push({
+      kind: "급여대장",
+      f,
+      label: "업로드됨"
+    }));
+    const renderRow = (kind, f, label, idx) => {
+      const [clr, bg] = META[kind] || META["기타"];
+      return React.createElement("div", {
+        key: kind + "_" + (f ? f.id || f.name : idx),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "9px 0",
+          borderBottom: "1px solid var(--border)"
+        }
+      }, React.createElement("span", {
+        style: {
+          fontSize: 10,
+          fontWeight: 700,
+          color: clr,
+          background: bg,
+          border: "1px solid " + clr + "40",
+          borderRadius: 7,
+          padding: "4px 8px",
+          flexShrink: 0,
+          minWidth: 62,
+          textAlign: "center"
+        }
+      }, kind), f ? React.createElement(React.Fragment, null, React.createElement("div", {
+        style: {
+          flex: 1,
+          minWidth: 0
+        }
+      }, React.createElement("div", {
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }
+      }, f.name), React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: "#16A34A",
+          fontWeight: 600
+        }
+      }, label + (f.createdAt ? " · " + new Date(f.createdAt).toLocaleString("ko-KR") : ""))), React.createElement("a", {
+        href: f.downloadUrl,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: {
+          fontSize: 10,
+          padding: "4px 10px",
+          borderRadius: 7,
+          border: "1px solid #34A85340",
+          background: "#F0FDF4",
+          color: "#16A34A",
+          fontWeight: 600,
+          textDecoration: "none",
+          whiteSpace: "nowrap"
+        }
+      }, "\uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("a", {
+        href: f.url,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: {
+          fontSize: 10,
+          padding: "4px 10px",
+          borderRadius: 7,
+          border: "1px solid var(--border2)",
+          background: "var(--sky-l)",
+          color: "var(--sky-d)",
+          fontWeight: 600,
+          textDecoration: "none",
+          whiteSpace: "nowrap"
+        }
+      }, "\uC5F4\uAE30")) : React.createElement("div", {
+        style: {
+          flex: 1,
+          fontSize: 11,
+          color: "var(--t3)"
+        }
+      }, "\uC544\uC9C1 \uC5C5\uB85C\uB4DC\uB418\uC9C0 \uC54A\uC74C"));
+    };
+    return React.createElement(React.Fragment, null, rows.map((r, i) => renderRow(r.kind, r.f, r.label, i)), React.createElement("div", {
+      style: {
+        marginTop: 8,
+        fontSize: 10,
+        color: "var(--t3)"
+      }
+    }, "\uAE09\uC5EC\uB300\uC7A5\uC740 \uD30C\uC77C\uBA85\uBCC4\uB85C \uD45C\uC2DC(\uAC19\uC740 \uC774\uB984\uC740 \uCD5C\uC2E0 1\uAC74\uB9CC, \uB2E4\uB978 \uC774\uB984\uC740 \uBAA8\uB450) \xB7 \uAC74\uAC15\uBCF4\uD5D8/\uAD6D\uBBFC\uC5F0\uAE08\uC740 \uCD5C\uC2E0 1\uAC74"));
+  })())), React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, "\uD30C\uC77C \uC5C5\uB85C\uB4DC"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--t2)",
+      fontWeight: 600
+    }
+  }, "\uACF5\uB2E8 \uACE0\uC9C0\uC11C \uC885\uB958:"), INS_TYPES.map(v => React.createElement("button", {
+    key: v,
+    onClick: () => setPubTypeOverride(v),
+    style: {
+      padding: "4px 10px",
+      borderRadius: 7,
+      fontSize: 10,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (pubTypeOverride === v ? "var(--sky-d)" : "var(--border2)"),
+      background: pubTypeOverride === v ? "var(--sky-l)" : "#fff",
+      color: pubTypeOverride === v ? "var(--sky-d)" : "var(--t3)"
+    }
+  }, v)), React.createElement("div", {
+    style: {
+      width: 1,
+      height: 20,
+      background: "var(--border2)",
+      margin: "0 4px"
+    }
+  }), hasData && React.createElement(React.Fragment, null, React.createElement("select", {
+    value: deptDeleteSel,
+    onChange: e => setDeptDeleteSel(e.target.value),
+    style: {
+      fontSize: 10,
+      padding: "4px 8px",
+      border: "1px solid var(--border2)",
+      borderRadius: 6,
+      fontFamily: "inherit",
+      background: "#fff",
+      outline: "none",
+      color: "var(--text)"
+    }
+  }, React.createElement("option", {
+    value: ""
+  }, "\uC0AC\uC5C5\uBD80 \uC120\uD0DD"), [...new Set(rawPub.map(r => r.dept || "미분류"))].sort().map(d => React.createElement("option", {
+    key: d,
+    value: d
+  }, d))), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: handleDeptDelete,
+    style: {
+      fontSize: 10,
+      color: "#DC2626",
+      borderColor: "#FECACA",
+      background: "#FEF2F2"
+    },
+    disabled: !deptDeleteSel
+  }, "\uC120\uD0DD \uC0AC\uC5C5\uBD80 \uC0AD\uC81C"), React.createElement("button", {
+    className: "btn btn-danger btn-sm",
+    onClick: handleDelete
+  }, "\uC804\uCCB4 \uC0AD\uC81C")))), React.createElement("div", {
+    className: "card-body"
+  }, React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, [["공단 고지서", handlePub, "#0EA5E9", "#E0F2FE", rawPub.length], ["회사 급여대장", handlePay, "#8B5CF6", "#F5F3FF", rawPay.length]].map(([label, handler, clr, bg, cnt]) => React.createElement("label", {
+    key: label,
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: "20px",
+      border: "2px dashed " + clr + "50",
+      borderRadius: 12,
+      cursor: "pointer",
+      background: cnt > 0 ? clr + "08" : bg,
+      transition: "all .15s",
+      position: "relative"
+    }
+  }, cnt > 0 && React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 8,
+      right: 10,
+      fontSize: 10,
+      color: clr,
+      fontWeight: 700,
+      background: clr + "15",
+      padding: "2px 8px",
+      borderRadius: 10
+    }
+  }, cnt, "\uAC74 \uB85C\uB4DC\uB428"), React.createElement("svg", {
+    width: "28",
+    height: "28",
+    viewBox: "0 0 24 24",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M12 16V4M12 4l-4 4M12 4l4 4",
+    stroke: clr,
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }), React.createElement("path", {
+    d: "M4 20h16",
+    stroke: clr,
+    strokeWidth: "2",
+    strokeLinecap: "round"
+  })), React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: clr
+    }
+  }, label + " 업로드"), React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, cnt > 0 ? "재업로드 가능" : "(.xlsx, .xls)"), React.createElement("input", {
+    type: "file",
+    accept: ".xlsx,.xls",
+    style: {
+      display: "none"
+    },
+    onChange: handler
+  })))), loading && React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "10px",
+      color: "var(--sky-d)",
+      fontSize: 12,
+      fontWeight: 600,
+      marginTop: 8
+    }
+  }, loading), error && React.createElement("div", {
+    style: {
+      padding: "8px 12px",
+      borderRadius: 8,
+      border: "1px solid #FECACA",
+      background: "#FEF2F2",
+      color: "#DC2626",
+      fontSize: 11,
+      marginTop: 8
+    }
+  }, error), React.createElement("div", {
+    style: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTop: "1px solid var(--border)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: "var(--t3)"
+    }
+  }, "\uC0D8\uD50C \uC591\uC2DD \uB2E4\uC6B4\uB85C\uB4DC:"), [["건강보험", "#0EA5E9"], ["국민연금", "#8B5CF6"], ["급여대장", "#059669"]].map(([type, clr]) => React.createElement("button", {
+    key: type,
+    onClick: () => downloadSample(type),
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      fontSize: 10,
+      padding: "5px 12px",
+      borderRadius: 7,
+      border: "1px solid " + clr + "40",
+      background: clr + "0D",
+      color: clr,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), type + " 양식"))), hasData && rawPub.length > 0 && React.createElement("div", {
+    style: {
+      marginTop: 6,
+      paddingTop: 10,
+      borderTop: "1px solid var(--border)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: "var(--sky-deep)"
+    }
+  }, "\uC5C5\uB85C\uB4DC \uC6D0\uBCF8 \uB2E4\uC6B4\uB85C\uB4DC:"), React.createElement("button", {
+    onClick: downloadUploadedHealthGovExcel,
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      fontSize: 10,
+      padding: "5px 12px",
+      borderRadius: 7,
+      border: "1px solid #0EA5E940",
+      background: "#E0F2FE",
+      color: "#0369A1",
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), "\uAC74\uAC15 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("button", {
+    onClick: downloadUploadedPensionGovExcel,
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      fontSize: 10,
+      padding: "5px 12px",
+      borderRadius: 7,
+      border: "1px solid #8B5CF640",
+      background: "#F5F3FF",
+      color: "#6D28D9",
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), "\uC5F0\uAE08 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC")))), hasData && React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4,1fr)",
+      gap: 10,
+      marginBottom: 14
+    }
+  }, [["총 대상자", merged.length + "명", "#0EA5E9"], ["불일치", mismatchCount + "건", "#DC2626"], ["검토 완료", doneCount + "건", "#16A34A"], ["미완료", mismatchCount + "건", "#D97706"]].map(([l, v, clr]) => React.createElement("div", {
+    key: l,
+    className: "stat-card",
+    style: {
+      borderTopColor: clr
+    }
+  }, React.createElement("div", {
+    className: "stat-label",
+    style: {
+      color: clr
+    }
+  }, l), React.createElement("div", {
+    className: "stat-value",
+    style: {
+      color: clr,
+      fontSize: 22
+    }
+  }, v)))), deptSummary.length > 0 && React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5,
+      marginBottom: 10,
+      flexWrap: "wrap"
+    }
+  }, depts.map(d => React.createElement("button", {
+    key: d,
+    className: "tab-btn" + (deptView === d ? " active" : ""),
+    onClick: () => setDeptView(d)
+  }, d))), deptSummary.length > 0 && React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, "\uC0AC\uC5C5\uBD80\uBCC4 \uC694\uC57D")), React.createElement("div", {
+    style: {
+      overflowX: "auto"
+    }
+  }, React.createElement("table", {
+    className: "xtbl",
+    style: {
+      minWidth: 900
+    }
+  }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", {
+    style: TH()
+  }, "\uC0AC\uC5C5\uBD80"), React.createElement("th", {
+    style: TH()
+  }, "\uC778\uC6D0"), hasHealth && React.createElement(React.Fragment, null, React.createElement("th", {
+    style: TH("#4F46E5")
+  }, "\uACF5\uB2E8 \uAC74\uAC15"), React.createElement("th", {
+    style: TH("#4F46E5")
+  }, "\uACF5\uB2E8 \uC694\uC591"), React.createElement("th", {
+    style: TH("#059669")
+  }, "\uAE09\uC5EC \uAC74\uAC15"), React.createElement("th", {
+    style: TH("#059669")
+  }, "\uAE09\uC5EC \uC694\uC591"), React.createElement("th", {
+    style: TH("#DC2626")
+  }, "\uCC28 \uAC74\uAC15"), React.createElement("th", {
+    style: TH("#DC2626")
+  }, "\uCC28 \uC694\uC591")), hasPension && React.createElement(React.Fragment, null, React.createElement("th", {
+    style: TH("#4F46E5")
+  }, "\uACF5\uB2E8 \uC5F0\uAE08"), React.createElement("th", {
+    style: TH("#059669")
+  }, "\uAE09\uC5EC \uC5F0\uAE08"), React.createElement("th", {
+    style: TH("#DC2626")
+  }, "\uCC28 \uC5F0\uAE08")))), React.createElement("tbody", null, deptSummary.map(d => {
+    const dh = d.pubH + d.pubHA - (d.payH + d.payHA);
+    const dc = d.pubC + d.pubCA - (d.payC + d.payCA);
+    const dp = d.pubP - d.payP;
+    return React.createElement("tr", {
+      key: d.dept
+    }, React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, d.dept), React.createElement("td", {
+      style: {
+        textAlign: "center"
+      }
+    }, merged.filter(r => (r.dept || "미분류") === d.dept).length), hasHealth && React.createElement(React.Fragment, null, TD_AMT(d.pubH + d.pubHA, "#4F46E5"), TD_AMT(d.pubC + d.pubCA, "#4F46E5"), TD_AMT(d.payH + d.payHA, "#059669"), TD_AMT(d.payC + d.payCA, "#059669"), TD_DIFF(dh), TD_DIFF(dc)), hasPension && React.createElement(React.Fragment, null, TD_AMT(d.pubP, "#4F46E5"), TD_AMT(d.payP, "#059669"), TD_DIFF(dp)));
+  }))))), viewRows.length > 0 && React.createElement("div", {
+    className: "card"
+  }, React.createElement("div", {
+    className: "card-hd"
+  }, React.createElement("div", {
+    className: "card-title"
+  }, "\uC0C1\uC138 \uBE44\uAD50 \u2014 \uC8FC\uBBFC\uBC88\uD638 \uAE30\uC900 \uB9E4\uCE6D"), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)"
+    }
+  }, "\uBD88\uC77C\uCE58 \uCD5C\uC0C1\uB2E8 \uC815\uB82C \xB7 ", viewRows.length, "\uAC74"), React.createElement("button", {
+    className: "btn btn-secondary btn-sm",
+    onClick: downloadVerificationExcel,
+    style: {
+      fontSize: 10,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 14 14",
+    fill: "none"
+  }, React.createElement("path", {
+    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
+    stroke: "currentColor",
+    strokeWidth: "1.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), (deptView === "전체" ? "전체 사업부" : "[" + deptView + "]") + " 엑셀 다운로드"))), React.createElement("div", {
+    style: {
+      overflowX: "auto"
+    }
+  }, React.createElement("table", {
+    className: "xtbl",
+    style: {
+      minWidth: hasHealth && hasPension ? 1500 : 1100
+    }
+  }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 28
+    }
+  }, "\u2713"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 60,
+      textAlign: "left"
+    }
+  }, "\uC0AC\uC5C5\uBD80"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 60,
+      textAlign: "left"
+    }
+  }, "\uC774\uB984"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 110,
+      fontFamily: "'DM Mono',monospace"
+    }
+  }, "\uC8FC\uBBFC\uBC88\uD638"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 70
+    }
+  }, "\uACE0\uC9C0\uB144\uC6D4"), hasHealth && React.createElement(React.Fragment, null, React.createElement("th", {
+    style: {
+      ...TH("#4F46E5"),
+      minWidth: 85
+    }
+  }, "\uACF5\uB2E8 \uAC74\uAC15"), React.createElement("th", {
+    style: {
+      ...TH("#4F46E5"),
+      minWidth: 85
+    }
+  }, "\uACF5\uB2E8 \uC694\uC591"), React.createElement("th", {
+    style: {
+      ...TH("#4F46E5"),
+      minWidth: 85
+    }
+  }, "\uACF5\uB2E8 \uAC74\uAC15\uC815\uC0B0"), React.createElement("th", {
+    style: {
+      ...TH("#4F46E5"),
+      minWidth: 85
+    }
+  }, "\uACF5\uB2E8 \uC694\uC591\uC815\uC0B0"), React.createElement("th", {
+    style: {
+      ...TH("#059669"),
+      minWidth: 85
+    }
+  }, "\uAE09\uC5EC \uAC74\uAC15"), React.createElement("th", {
+    style: {
+      ...TH("#059669"),
+      minWidth: 85
+    }
+  }, "\uAE09\uC5EC \uC694\uC591"), React.createElement("th", {
+    style: {
+      ...TH("#059669"),
+      minWidth: 85
+    }
+  }, "\uAE09\uC5EC \uAC74\uAC15\uC815\uC0B0"), React.createElement("th", {
+    style: {
+      ...TH("#059669"),
+      minWidth: 85
+    }
+  }, "\uAE09\uC5EC \uC694\uC591\uC815\uC0B0"), React.createElement("th", {
+    style: {
+      ...TH("#DC2626"),
+      minWidth: 75
+    }
+  }, "\uCC28 \uAC74\uAC15"), React.createElement("th", {
+    style: {
+      ...TH("#DC2626"),
+      minWidth: 75
+    }
+  }, "\uCC28 \uC694\uC591"), React.createElement("th", {
+    style: {
+      ...TH("#DC2626"),
+      minWidth: 75
+    }
+  }, "\uCC28 \uAC74\uAC15\uC815\uC0B0"), React.createElement("th", {
+    style: {
+      ...TH("#DC2626"),
+      minWidth: 75
+    }
+  }, "\uCC28 \uC694\uC591\uC815\uC0B0")), hasPension && React.createElement(React.Fragment, null, React.createElement("th", {
+    style: {
+      ...TH("#4F46E5"),
+      minWidth: 85
+    }
+  }, "\uACF5\uB2E8 \uC5F0\uAE08"), React.createElement("th", {
+    style: {
+      ...TH("#059669"),
+      minWidth: 85
+    }
+  }, "\uAE09\uC5EC \uC5F0\uAE08"), React.createElement("th", {
+    style: {
+      ...TH("#DC2626"),
+      minWidth: 75
+    }
+  }, "\uCC28 \uC5F0\uAE08")), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 160
+    }
+  }, "\uC0AC\uC720"))), React.createElement("tbody", null, viewRows.map(row => {
+    const isDone = !!checked[row.id];
+    const rowBg = row.autoOk ? "#F0FDF4" : isDone ? "#F0FDF4" : row.mismatch ? "rgba(254,226,226,.45)" : "#fff";
+    const r = reasons[row.id] || "";
+    return React.createElement("tr", {
+      key: row.id,
+      style: {
+        background: rowBg
+      }
+    }, React.createElement("td", {
+      style: {
+        textAlign: "center",
+        padding: "7px 6px",
+        borderBottom: "1px solid #E8EEF5"
+      }
+    }, React.createElement("input", {
+      type: "checkbox",
+      checked: isDone,
+      onChange: () => toggleCheck(row.id),
+      style: {
+        width: 14,
+        height: 14,
+        cursor: "pointer",
+        accentColor: "#16A34A"
+      }
+    })), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        fontSize: 11
+      }
+    }, row.dept || "—"), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        fontWeight: 600,
+        fontSize: 12,
+        color: isDone ? "var(--t3)" : "var(--text)"
+      }
+    }, row.name), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        fontFamily: "'DM Mono',monospace",
+        fontSize: 10,
+        textAlign: "center"
+      }
+    }, maskRRN(row.rrn)), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        textAlign: "center",
+        fontSize: 11
+      }
+    }, row.yearMonth || "—"), hasHealth && React.createElement(React.Fragment, null, TD_AMT(row.health, "#4F46E5"), TD_AMT(row.care, "#4F46E5"), TD_AMT(row.healthAdj, "#4F46E5"), TD_AMT(row.careAdj, "#4F46E5"), TD_AMT(row.pay ? row.pay.health : 0, "#059669"), TD_AMT(row.pay ? row.pay.care : 0, "#059669"), TD_AMT(row.pay ? row.pay.healthAdj : 0, "#059669"), TD_AMT(row.pay ? row.pay.careAdj : 0, "#059669"), TD_DIFF(row.diffHealth), TD_DIFF(row.diffCare), TD_DIFF(row.diffHealthAdj), TD_DIFF(row.diffCareAdj)), hasPension && React.createElement(React.Fragment, null, TD_AMT(row.pension, "#4F46E5"), TD_AMT(row.pay ? row.pay.pension : 0, "#059669"), TD_DIFF(row.diffPension)), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 4,
+        alignItems: "center",
+        flexWrap: "wrap"
+      }
+    }, row.mismatch && React.createElement(React.Fragment, null, React.createElement("select", {
+      value: r,
+      onChange: e => setReason(row.id, e.target.value),
+      style: {
+        fontSize: 10,
+        border: "1px solid var(--border2)",
+        borderRadius: 6,
+        padding: "3px 6px",
+        background: isDone ? "#F0FDF4" : "#fff",
+        fontFamily: "inherit",
+        color: "var(--text)",
+        minWidth: 85,
+        outline: "none"
+      }
+    }, React.createElement("option", {
+      value: ""
+    }, "\uC0AC\uC720 \uC120\uD0DD"), INS_REASONS.map(rs => React.createElement("option", {
+      key: rs,
+      value: rs
+    }, rs))), r === "직접입력" && React.createElement("input", {
+      className: "inp",
+      style: {
+        fontSize: 10,
+        padding: "3px 6px",
+        width: 90
+      },
+      placeholder: "\uC9C1\uC811\uC785\uB825",
+      value: customReasons[row.id] || "",
+      onChange: e => setCustom(row.id, e.target.value)
+    }), isDone && React.createElement("span", {
+      style: {
+        fontSize: 9,
+        padding: "1px 6px",
+        borderRadius: 10,
+        background: "#F0FDF4",
+        color: "#16A34A",
+        border: "1px solid #BBF7D0",
+        fontWeight: 700,
+        flexShrink: 0,
+        whiteSpace: "nowrap"
+      }
+    }, "\uAC80\uD1A0\uC644\uB8CC"), !isDone && React.createElement("span", {
+      style: {
+        fontSize: 9,
+        padding: "1px 6px",
+        borderRadius: 10,
+        background: "#FFF7F7",
+        color: "#DC2626",
+        border: "1px solid #FECACA",
+        fontWeight: 700,
+        flexShrink: 0,
+        whiteSpace: "nowrap"
+      }
+    }, "\uAC80\uD1A0\uB300\uAE30")), !row.mismatch && React.createElement("span", {
+      style: {
+        fontSize: 9,
+        padding: "1px 6px",
+        borderRadius: 10,
+        background: "#F0FDF4",
+        color: "#16A34A",
+        border: "1px solid #BBF7D0",
+        fontWeight: 700,
+        whiteSpace: "nowrap"
+      }
+    }, row.autoOk ? "자동완료" : "정상"))));
+  }))))), !hasData && React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "48px 0",
+      color: "var(--t3)"
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 40,
+      marginBottom: 12
+    }
+  }, "\uD83D\uDCCB"), React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      marginBottom: 6
+    }
+  }, "4\uB300\uBCF4\uD5D8 \uAC80\uC99D \u2014 ", curYM), React.createElement("div", {
+    style: {
+      fontSize: 12,
+      lineHeight: 1.7
+    }
+  }, "\uACF5\uB2E8 \uACE0\uC9C0\uC11C\uC640 \uD68C\uC0AC \uAE09\uC5EC\uB300\uC7A5 \uD30C\uC77C\uC744 \uC5C5\uB85C\uB4DC\uD558\uBA74", React.createElement("br", null), "\uC8FC\uBBFC\uBC88\uD638 \uAE30\uC900\uC73C\uB85C \uC790\uB3D9 \uB9E4\uCE6D \uD6C4 \uCC28\uC561\uC744 \uACC4\uC0B0\uD569\uB2C8\uB2E4.", React.createElement("br", null), React.createElement("span", {
+    style: {
+      color: "var(--sky-d)",
+      fontWeight: 600
+    }
+  }, "\uB370\uC774\uD130\uB294 \uB2EC\uBCC4\uB85C \uBD84\uB9AC \uC800\uC7A5\uB418\uC5B4 \uC0C8\uB85C\uACE0\uCE68 \uD6C4\uC5D0\uB3C4 \uC720\uC9C0\uB429\uB2C8\uB2E4."))));
+}
+class ErrorBoundary extends React.Component {
+  constructor(p) {
+    super(p);
+    this.state = {
+      err: null
+    };
+  }
+  static getDerivedStateFromError(err) {
+    return {
+      err: err
+    };
+  }
+  componentDidCatch(err, info) {
+    console.error("화면 렌더 오류:", err, info);
+  }
+  render() {
+    if (this.state.err) {
+      const e = this.state.err;
+      return React.createElement("div", {
+        style: {
+          padding: "28px",
+          fontFamily: "Noto Sans KR,sans-serif",
+          color: "#991B1B",
+          maxWidth: 860,
+          margin: "24px auto"
+        }
+      }, React.createElement("div", {
+        style: {
+          fontSize: 18,
+          fontWeight: 700,
+          marginBottom: 10
+        }
+      }, "\uC774 \uD654\uBA74\uC744 \uADF8\uB9AC\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4"), React.createElement("div", {
+        style: {
+          background: "#FEF2F2",
+          border: "1px solid #FECACA",
+          borderRadius: 8,
+          padding: 12,
+          fontFamily: "monospace",
+          fontSize: 13,
+          whiteSpace: "pre-wrap",
+          color: "#991B1B"
+        }
+      }, String(e && e.message || e)), React.createElement("pre", {
+        style: {
+          marginTop: 10,
+          fontSize: 11,
+          color: "#64748B",
+          whiteSpace: "pre-wrap",
+          maxHeight: 260,
+          overflow: "auto",
+          background: "#F8FAFC",
+          border: "1px solid #E2E8F0",
+          borderRadius: 8,
+          padding: 10
+        }
+      }, String(e && e.stack || "")), React.createElement("button", {
+        onClick: () => this.setState({
+          err: null
+        }),
+        style: {
+          marginTop: 12,
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #CBD5E1",
+          background: "#fff",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          fontWeight: 600
+        }
+      }, "\uB2E4\uC2DC \uC2DC\uB3C4"));
+    }
+    return this.props.children;
+  }
+}
+function Dashboard() {
+  const saved = lsGet();
+  if (saved) {
+    delete saved.selectedDate;
+    delete saved.calYear;
+    delete saved.calMonth;
+  }
+  const [page, setPage] = useState("home");
+  const [team, setTeam] = useState(() => saved && saved.team || DEF_TEAM);
+  const [employees, setEmployees] = useState(() => saved && saved.employees || []);
+  const [tasks, setTasks] = useState(() => saved && saved.tasks || []);
+  const [ts, setTs] = useState(() => saved && saved.ts || {});
+  const [routines, setRoutines] = useState(() => loadRoutines() || []);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState(() => todayStr);
+  const [modal, setModal] = useState(null);
+  const [adminName, setAdminName] = useState(() => saved && saved.adminName || "박혜연");
+  const [toast, setToast] = useState(null);
+  const [empForm, setEmpForm] = useState({
+    name: "",
+    empId: "",
+    dept: "HQ",
+    type: "입사",
+    date: todayStr,
+    note: ""
+  });
+  const [apiRows, setApiRows] = useState([]);
+  const [apiStatus, setApiStatus] = useState("idle");
+  const [apiUrl, setApiUrl] = useState(API_URL);
+  const [gTmpl, setGTmpl] = useState(() => loadGTmpl());
+  const [showGuide, setShowGuide] = useState(false);
+  const [cloudRev, setCloudRev] = useState(0);
+  const tasksRef = useRef(tasks);
+  const tsRef = useRef(ts);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+  useEffect(() => {
+    tsRef.current = ts;
+  }, [ts]);
+  const commitTasks = useCallback((nextTasks, nextTs) => {
+    tasksRef.current = nextTasks;
+    tsRef.current = nextTs;
+    setTasks(nextTasks);
+    setTs(nextTs);
+    SheetDB.setCollection("tasks", nextTasks);
+    SheetDB.setCollection("ts", nextTs);
+  }, []);
+  useSkipFirstEffect(() => {
+    SheetDB.setCollection("team", team);
+  }, [team]);
+  useSkipFirstEffect(() => {
+    SheetDB.setCollection("employees", employees);
+  }, [employees]);
+  useSkipFirstEffect(() => {
+    SheetDB.setCollection("tasks", tasks);
+  }, [tasks]);
+  useSkipFirstEffect(() => {
+    SheetDB.setCollection("ts", ts);
+  }, [ts]);
+  useSkipFirstEffect(() => {
+    SheetDB.setCollection("adminName", adminName);
+  }, [adminName]);
+  useSkipFirstEffect(() => {
+    saveRoutines(routines);
+  }, [routines]);
+  const reconcile = useCallback(data => {
+    if (!data) return;
+    const setIfDiff = (cur, next, setter) => {
+      if (next === undefined) return;
+      if (JSON.stringify(cur) === JSON.stringify(next)) return;
+      const emptyNext = (Array.isArray(next) && next.length === 0) || (next && typeof next === "object" && !Array.isArray(next) && Object.keys(next).length === 0);
+      const nonEmptyCur = (Array.isArray(cur) && cur.length > 0) || (cur && typeof cur === "object" && !Array.isArray(cur) && Object.keys(cur).length > 0);
+      if (emptyNext && nonEmptyCur) return; // 빈 서버값으로 화면 내용 덮어쓰기 금지(applyState가 서버를 복구함)
+      setter(next);
+    };
+    setIfDiff(team, data.team, setTeam);
+    setIfDiff(employees, data.employees, setEmployees);
+    setIfDiff(tasks, data.tasks, setTasks);
+    setIfDiff(ts, data.ts, setTs);
+    setIfDiff(routines, data.routines, setRoutines);
+    if (data.gTmpl && typeof data.gTmpl === "object") setIfDiff(gTmpl, data.gTmpl, setGTmpl);
+    if (typeof data.adminName === "string" && data.adminName) setIfDiff(adminName, data.adminName, setAdminName);
+    setCloudRev(v => v + 1);
+  }, [team, employees, tasks, ts, routines, gTmpl, adminName]);
+  const syncFromCloud = useCallback(async () => {
+    if (SheetDB.pending() > 0) return;
+    const data = await SheetDB.refresh();
+    reconcile(data);
+  }, [reconcile]);
+  useEffect(() => {
+    const onFocus = () => syncFromCloud();
+    window.addEventListener("focus", onFocus);
+    const iv = setInterval(() => syncFromCloud(), 30000);
+    // Supabase 실시간: 다른 사람이 저장하면 즉시 내 화면에도 반영
+    const offRemote = SheetDB.onRemote ? SheetDB.onRemote(() => syncFromCloud()) : null;
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(iv);
+      if (offRemote) offRemote();
+    };
+  }, [syncFromCloud]);
+  useEffect(() => {
+    if (!routines || routines.length === 0) return;
+    setTasks(prev => {
+      let next = [...prev];
+      let changed = false;
+      (routines || []).forEach(r => {
+        const ne = expandRoutine(r, next, team);
+        if (ne.length > 0) {
+          next = [...next, ...ne];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [routines, team]);
+  useEffect(() => {
+    setTs(prev => {
+      let ch = false;
+      const n = {
+        ...prev
+      };
+      (tasks || []).forEach(t => {
+        if (n[t.id] === undefined) {
+          n[t.id] = "pending";
+          ch = true;
+        }
+      });
+      return ch ? n : prev;
+    });
+  }, [tasks]);
+  const onToggle = useCallback(id => setTs(p => ({
+    ...p,
+    [id]: p[id] === "completed" ? "pending" : "completed"
+  })), []);
+  useEffect(() => {
+    window.__addTask = newTask => {
+      const nextTasks = [...(tasksRef.current || []), newTask];
+      const nextTs = {
+        ...(tsRef.current || {}),
+        [newTask.id]: "pending"
+      };
+      commitTasks(nextTasks, nextTs);
+    };
+    return () => {
+      delete window.__addTask;
+    };
+  }, [commitTasks]);
+  const onDelete = useCallback(id => {
+    setTasks(p => p.filter(t => t.id !== id));
+    setTs(p => {
+      const s = {
+        ...p
+      };
+      delete s[id];
+      return s;
+    });
+  }, []);
+  const onEditTask = useCallback((id, patch) => {
+    setTasks(p => (p || []).map(t => t.id === id ? {
+      ...t,
+      ...patch
+    } : t));
+  }, []);
+  const onCalNav = dir => setCalMonth(m => {
+    let nm = m + dir;
+    if (nm > 11) {
+      setCalYear(y => y + 1);
+      return 0;
+    }
+    if (nm < 0) {
+      setCalYear(y => y - 1);
+      return 11;
+    }
+    return nm;
+  });
+  const onAddCal = date => {
+    setSelectedDate(date);
+    setModal("schedule");
+  };
+  function handleAddSchedules(payload) {
+    if (!payload) return;
+    if (payload.kind === "tasks") {
+      const tks = payload.tasks || [];
+      const nextTasks = [...(tasksRef.current || []), ...tks];
+      const nextTs = {
+        ...(tsRef.current || {})
+      };
+      tks.forEach(t => nextTs[t.id] = "pending");
+      commitTasks(nextTasks, nextTs);
+      setToast("일정 " + tks.length + "개 추가 완료");
+    } else if (payload.kind === "routine") {
+      const nr = {
+        id: uid(),
+        task: payload.task,
+        cycle: payload.cycle,
+        startDate: payload.startDate,
+        day: payload.day,
+        legal: payload.legal,
+        assignees: payload.assignees
+      };
+      const newRts = [...(routines || []), nr];
+      const ne = expandRoutine(nr, [...(tasksRef.current || [])], team || []);
+      const nextTasks = [...(tasksRef.current || []), ...ne];
+      const nextTs = {
+        ...(tsRef.current || {})
+      };
+      ne.forEach(t => nextTs[t.id] = "pending");
+      setRoutines(newRts);
+      SheetDB.setCollection("routines", newRts);
+      commitTasks(nextTasks, nextTs);
+      setToast("정기 일정 생성 완료 (" + ne.length + "개 일정 생성)");
+    }
+  }
+  function handleDeleteRoutine(rid) {
+    setRoutines(p => (p || []).filter(r => r.id !== rid));
+    setTasks(p => (p || []).filter(t => t.routineId !== rid));
+    setTs(p => {
+      const s = {
+        ...p
+      };
+      (tasks || []).forEach(t => {
+        if (t.routineId === rid) delete s[t.id];
+      });
+      return s;
+    });
+    setToast("정기 일정 삭제 완료");
+  }
+  function handleEditRoutine(rid, payload) {
+    const updated = {
+      id: rid,
+      ...payload
+    };
+    setRoutines(p => (p || []).map(r => r.id === rid ? updated : r));
+    setTasks(prev => {
+      const without = (prev || []).filter(t => t.routineId !== rid);
+      const ne = expandRoutine(updated, without, team || []);
+      return [...without, ...ne];
+    });
+    setToast("정기 일정 수정 완료");
+  }
+  function handleRefresh() {
+    setApiStatus("loading");
+    fetch(apiUrl).then(r => r.json()).then(data => {
+      const rows = Array.isArray(data) ? data : data.data || [];
+      setApiRows(rows.map((r, i) => ({
+        rowIndex: r.rowIndex || i + 2,
+        ...r
+      })));
+      setApiStatus("ok");
+    }).catch(() => setApiStatus("err"));
+  }
+  function submitEmp() {
+    if (!empForm.name || !empForm.date) return alert("이름과 날짜를 입력해주세요.");
+    const emp = {
+      id: uid(),
+      ...empForm,
+      empId: empForm.empId || "N/A"
+    };
+    setEmployees(p => [...(p || []), emp]);
+    const nt = genEmpTasks(emp);
+    setTasks(p => [...(p || []), ...nt]);
+    setTs(p => {
+      const s = {
+        ...p
+      };
+      nt.forEach(t => s[t.id] = "pending");
+      return s;
+    });
+    setModal(null);
+    setEmpForm({
+      name: "",
+      empId: "",
+      dept: "HQ",
+      type: "입사",
+      date: todayStr,
+      note: ""
+    });
+    setToast(empForm.name + " 추가 완료");
+  }
+  const urgentCount = (tasks || []).filter(t => t.urgent && ts[t.id] !== "completed").length;
+  const moveCount = (apiRows || []).filter(r => MOVE_TYPES.includes(String(r.isReflected || "").trim())).length;
+  const histPend = (apiRows || []).filter(r => r.verify1Done && !r.verify2Done).length;
+  const NAV = [{
+    key: "home",
+    label: "전체 워크플로우",
+    icon: "⊞"
+  }, {
+    key: "ob",
+    label: "인사이동 관리",
+    icon: "↔",
+    badge: moveCount,
+    bCls: "sky"
+  }, {
+    key: "team",
+    label: "팀원별 진척도",
+    icon: "◈"
+  }, {
+    key: "history",
+    label: "업무 이력",
+    icon: "≡",
+    badge: histPend
+  }, {
+    key: "memo",
+    label: "특이사항 관리",
+    icon: "✎"
+  }, {
+    key: "insurance",
+    label: "4대보험 검증",
+    icon: "◉"
+  }];
+  const PMETA = {
+    home: {
+      title: "HRM 업무 관리 대시보드",
+      sub: KOR_M[calMonth] + " " + calYear + " · 일정 관리"
+    },
+    ob: {
+      title: "인사이동 관리",
+      sub: "D열 자동 필터링 · 공통 루틴 체크리스트"
+    },
+    team: {
+      title: "팀원별 진척도",
+      sub: "당일 진행률 · " + selectedDate + " 기준"
+    },
+    history: {
+      title: "업무 이력",
+      sub: "Google Sheets 연동 · 1차/2차 검증"
+    },
+    memo: {
+      title: "특이사항 관리",
+      sub: "HR 메모 · 이슈 · 요청사항 기록 및 관리"
+    },
+    insurance: {
+      title: "4대보험 검증",
+      sub: "공단 고지서 vs 급여대장 주민번호 기준 자동 매칭 · 차액 계산"
+    }
+  };
+  return React.createElement("div", {
+    className: "bw"
+  }, React.createElement("div", {
+    className: "bchrome"
+  }, React.createElement("div", {
+    className: "btb"
+  }, React.createElement("div", {
+    className: "bdots"
+  }, React.createElement("div", {
+    className: "bd r"
+  }), React.createElement("div", {
+    className: "bd y"
+  }), React.createElement("div", {
+    className: "bd g"
+  })), React.createElement("div", {
+    className: "baddr",
+    style: {
+      flex: 1
+    }
+  }, React.createElement("span", null, "hr-shine-desk.app / " + page), React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#94A3B8"
+    }
+  }, "HR SHINE DESK v15")), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center",
+      fontSize: 10,
+      color: "#64748B"
+    }
+  }, React.createElement(SyncBadge, null))), React.createElement("div", {
+    className: "btabs"
+  }, React.createElement("div", {
+    className: "btab active"
+  }, "HR SHINE DESK \u2014 ", (PMETA[page] || {}).title))), React.createElement("div", {
+    className: "bcontent"
+  }, React.createElement("div", {
+    className: "shell"
+  }, React.createElement("aside", {
+    className: "sidebar"
+  }, React.createElement("div", {
+    className: "sb-logo"
+  }, React.createElement("div", {
+    className: "sb-logo-icon"
+  }, React.createElement("svg", {
+    width: "18",
+    height: "18",
+    viewBox: "0 0 16 16",
+    fill: "none"
+  }, React.createElement("rect", {
+    x: "1",
+    y: "1",
+    width: "6",
+    height: "6",
+    rx: "1.5",
+    fill: "white"
+  }), React.createElement("rect", {
+    x: "9",
+    y: "1",
+    width: "6",
+    height: "6",
+    rx: "1.5",
+    fill: "white",
+    opacity: ".7"
+  }), React.createElement("rect", {
+    x: "1",
+    y: "9",
+    width: "6",
+    height: "6",
+    rx: "1.5",
+    fill: "white",
+    opacity: ".7"
+  }), React.createElement("rect", {
+    x: "9",
+    y: "9",
+    width: "6",
+    height: "6",
+    rx: "1.5",
+    fill: "white",
+    opacity: ".4"
+  }))), React.createElement("div", {
+    className: "sb-logo-t"
+  }, "HR SHINE DESK"), React.createElement("div", {
+    className: "sb-logo-s"
+  }, "HRM Operations v15")), React.createElement("div", {
+    className: "sb-sec"
+  }, "\uC6CC\uD06C\uC2A4\uD398\uC774\uC2A4"), React.createElement("nav", {
+    className: "sb-nav"
+  }, NAV.map(({
+    key,
+    label,
+    icon,
+    badge,
+    bCls
+  }) => React.createElement("button", {
+    key: key,
+    className: "nav-item" + (page === key ? " active" : ""),
+    onClick: () => setPage(key)
+  }, React.createElement("span", {
+    style: {
+      opacity: .8
+    }
+  }, icon), React.createElement("span", {
+    style: {
+      flex: 1
+    }
+  }, label), badge > 0 && React.createElement("span", {
+    className: "nav-badge" + (bCls ? " " + bCls : "")
+  }, badge)))), React.createElement("div", {
+    className: "sb-footer"
+  }, React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "rgba(255,255,255,.35)",
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      marginBottom: 5
+    }
+  }, React.createElement("div", {
+    className: "ldot"
+  }), "Supabase \uC2E4\uC2DC\uAC04 \uACF5\uC720 \uC800\uC7A5"), React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "rgba(255,255,255,.2)",
+      fontFamily: "'DM Mono',monospace"
+    }
+  }, "정기 일정: " + (routines || []).length + "개 활성"))), React.createElement("div", {
+    className: "main"
+  }, React.createElement("header", {
+    className: "topbar"
+  }, React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 800,
+      color: "var(--sky-deep)"
+    }
+  }, (PMETA[page] || {}).title), React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      marginTop: 1
+    }
+  }, (PMETA[page] || {}).sub)), React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, React.createElement("a", {
+    href: "https://docs.google.com/spreadsheets/d/1-gpzWbXGwPIOz6FIJwLGeAmcOVLK_JWtLeFLZ-DW8D4/edit?gid=0#gid=0",
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      fontSize: 11,
+      padding: "5px 12px",
+      borderRadius: "var(--rs)",
+      border: "1px solid #BBF7D0",
+      background: "#F0FDF4",
+      color: "#16A34A",
+      fontWeight: 600,
+      textDecoration: "none",
+      cursor: "pointer"
+    }
+  }, React.createElement("span", {
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: "#16A34A",
+      display: "inline-block",
+      flexShrink: 0
+    }
+  }), "\uAD6C\uAE00 \uC2DC\uD2B8 \uBC14\uB85C\uAC00\uAE30"), React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      fontSize: 11,
+      padding: "5px 12px"
+    },
+    onClick: async () => {
+      setToast("저장 연결 진단 중...");
+      const r = await SheetDB.diagnose();
+      setToast(null);
+      alert((r.ok ? "[저장 진단: 정상]\n\n" : "[저장 진단: 문제 발견]\n\n") + r.msg);
+    }
+  }, "\uD83D\uDD0C \uC800\uC7A5 \uC9C4\uB2E8"), React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      fontSize: 11,
+      padding: "5px 12px"
+    },
+    onClick: () => setModal("routine")
+  }, "\uC815\uAE30 \uC77C\uC815 \uAD00\uB9AC"), React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      fontSize: 11,
+      padding: "5px 12px"
+    },
+    onClick: () => setModal("schedule")
+  }, "+ \uC77C\uC815 \uCD94\uAC00"), React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      fontSize: 11,
+      padding: "5px 12px"
+    },
+    onClick: () => setShowGuide(true)
+  }, "\uB3C4\uC6C0\uB9D0"), React.createElement("div", {
+    style: {
+      width: 30,
+      height: 30,
+      borderRadius: "50%",
+      background: "var(--sky-l)",
+      border: "1.5px solid var(--sky-m)",
+      color: "var(--sky-d)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 10,
+      fontWeight: 800
+    }
+  }, "HR"))), React.createElement("main", {
+    className: "pgcont"
+  }, React.createElement(ErrorBoundary, {
+    key: page
+  }, page === "home" && React.createElement(PageHome, {
+    employees: employees || [],
+    tasks: tasks || [],
+    ts: ts || {},
+    apiRows: apiRows || [],
+    team: team || [],
+    calYear: calYear,
+    calMonth: calMonth,
+    onCalNav: onCalNav,
+    onToggle: onToggle,
+    onDelete: onDelete,
+    onEditTask: onEditTask,
+    onAddCal: onAddCal,
+    selectedDate: selectedDate,
+    onSelectDate: setSelectedDate
+  }), page === "ob" && React.createElement(PageOB, {
+    apiRows: apiRows || [],
+    apiStatus: apiStatus,
+    team: team || [],
+    onRefresh: handleRefresh,
+    gTmpl: gTmpl,
+    setGTmpl: setGTmpl
+  }), page === "team" && React.createElement(PageTeam, {
+    tasks: tasks || [],
+    ts: ts || {},
+    team: team || [],
+    onToggle: onToggle,
+    onDelete: onDelete,
+    onEditTask: onEditTask,
+    onUpdateTeam: setTeam,
+    selectedDate: selectedDate,
+    onSelectDate: setSelectedDate
+  }), page === "history" && React.createElement(PageHistory, {
+    adminName: adminName,
+    setAdminName: setAdminName,
+    apiRows: apiRows || [],
+    setApiRows: setApiRows,
+    apiStatus: apiStatus,
+    setApiStatus: setApiStatus,
+    apiUrl: apiUrl,
+    setApiUrl: setApiUrl
+  }), page === "memo" && React.createElement(PageMemo, {
+    cloudRev: cloudRev,
+    selectedDate: selectedDate
+  }), page === "insurance" && React.createElement(Page4Insurance, {
+    cloudRev: cloudRev
+  })))))), modal === "employee" && React.createElement(Modal, {
+    title: "\uC9C1\uC6D0 \uCD94\uAC00",
+    sub: "\uCD94\uAC00 \uC989\uC2DC \uC77C\uC815\uC774 \uC790\uB3D9 \uC0DD\uC131\uB429\uB2C8\uB2E4.",
+    onClose: () => setModal(null)
+  }, React.createElement(FR, {
+    label: "\uC774\uB984"
+  }, React.createElement("input", {
+    className: "inp",
+    placeholder: "\uD64D\uAE38\uB3D9",
+    value: empForm.name,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      name: e.target.value
+    }))
+  })), React.createElement(FR, {
+    label: "\uC0AC\uBC88"
+  }, React.createElement("input", {
+    className: "inp",
+    placeholder: "EMP-001",
+    value: empForm.empId,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      empId: e.target.value
+    }))
+  })), React.createElement(FR, {
+    label: "\uC0AC\uC5C5\uBD80"
+  }, React.createElement("select", {
+    className: "inp",
+    value: empForm.dept,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      dept: e.target.value
+    }))
+  }, DEPTS.map(d => React.createElement("option", {
+    key: d
+  }, d)))), React.createElement(FR, {
+    label: "\uAD6C\uBD84"
+  }, React.createElement("select", {
+    className: "inp",
+    value: empForm.type,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      type: e.target.value
+    }))
+  }, ALL_STATUSES.map(s => React.createElement("option", {
+    key: s,
+    value: s
+  }, s)))), React.createElement(FR, {
+    label: "\uB0A0\uC9DC"
+  }, React.createElement("input", {
+    type: "date",
+    className: "inp",
+    value: empForm.date,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      date: e.target.value
+    }))
+  })), React.createElement(FR, {
+    label: "\uD2B9\uC774\uC0AC\uD56D"
+  }, React.createElement("input", {
+    className: "inp",
+    placeholder: "\uAD8C\uACE0\uC0AC\uC9C1, \uACC4\uC57D\uB9CC\uB8CC \uB4F1",
+    value: empForm.note,
+    onChange: e => setEmpForm(f => ({
+      ...f,
+      note: e.target.value
+    }))
+  })), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "flex-end",
+      marginTop: 14
+    }
+  }, React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setModal(null)
+  }, "\uCDE8\uC18C"), React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: submitEmp
+  }, "\uCD94\uAC00 + \uC790\uB3D9 \uC0DD\uC131"))), modal === "schedule" && React.createElement(ScheduleModal, {
+    team: team || [],
+    onClose: () => setModal(null),
+    onAddSchedules: handleAddSchedules
+  }), modal === "routine" && React.createElement(RoutineManagerModal, {
+    routines: routines || [],
+    team: team || [],
+    onClose: () => setModal(null),
+    onDelete: handleDeleteRoutine,
+    onEdit: handleEditRoutine,
+    onAdd: handleAddSchedules,
+    onReset: () => {
+      setRoutines([]);
+      setTasks(p => (p || []).filter(t => !t.routineId));
+      setToast("정기 일정 초기화 완료");
+      setModal(null);
+    }
+  }), toast && React.createElement(Toast, {
+    msg: toast,
+    onDone: () => setToast(null)
+  }), showGuide && React.createElement(GuideModal, {
+    onClose: () => setShowGuide(false)
+  }));
+}
+function SyncBadge() {
+  const [st, setSt] = useState(SheetDB.status());
+  useEffect(() => SheetDB.onStatus(setSt), []);
+  const MAP = {
+    idle: {
+      dot: "#94A3B8",
+      t: "대기"
+    },
+    loading: {
+      dot: "#0EA5E9",
+      t: "불러오는 중…"
+    },
+    saving: {
+      dot: "#0EA5E9",
+      t: "저장 중…"
+    },
+    saved: {
+      dot: "#16A34A",
+      t: "동기화됨"
+    },
+    offline: {
+      dot: "#D97706",
+      t: "오프라인(로컬 저장)"
+    },
+    error: {
+      dot: "#DC2626",
+      t: "연결 오류"
+    }
+  };
+  const m = MAP[st] || MAP.idle;
+  const spin = st === "saving" || st === "loading";
+  return React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      fontSize: 10,
+      color: "#475569",
+      fontWeight: 600
+    }
+  }, React.createElement("span", {
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: m.dot,
+      display: "inline-block",
+      boxShadow: spin ? "0 0 0 3px " + m.dot + "22" : "none",
+      transition: "all .2s"
+    }
+  }), m.t);
+}
+function App() {
+  const [booted, setBooted] = useState(false);
+  useEffect(() => {
+    SheetDB.boot().then(() => setBooted(true)).catch(() => setBooted(true));
+  }, []);
+  if (!booted) {
+    return React.createElement("div", {
+      style: {
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg)",
+        fontFamily: "'Noto Sans KR',sans-serif"
+      }
+    }, React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        background: "linear-gradient(135deg,#0EA5E9,#38BDF8)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 18,
+        boxShadow: "0 8px 28px rgba(14,165,233,.35)"
+      }
+    }, React.createElement("svg", {
+      width: "28",
+      height: "28",
+      viewBox: "0 0 16 16",
+      fill: "none"
+    }, React.createElement("rect", {
+      x: "1",
+      y: "1",
+      width: "6",
+      height: "6",
+      rx: "1.5",
+      fill: "white"
+    }), React.createElement("rect", {
+      x: "9",
+      y: "1",
+      width: "6",
+      height: "6",
+      rx: "1.5",
+      fill: "white",
+      opacity: ".7"
+    }), React.createElement("rect", {
+      x: "1",
+      y: "9",
+      width: "6",
+      height: "6",
+      rx: "1.5",
+      fill: "white",
+      opacity: ".7"
+    }), React.createElement("rect", {
+      x: "9",
+      y: "9",
+      width: "6",
+      height: "6",
+      rx: "1.5",
+      fill: "white",
+      opacity: ".4"
+    }))), React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 800,
+        color: "var(--sky-deep)",
+        letterSpacing: "-.02em"
+      }
+    }, "HR SHINE DESK"), React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--t2)",
+        marginTop: 8,
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, React.createElement("span", {
+      className: "boot-spin",
+      style: {
+        width: 14,
+        height: 14,
+        border: "2px solid var(--sky-m)",
+        borderTopColor: "var(--sky)",
+        borderRadius: "50%",
+        display: "inline-block"
+      }
+    }), "Supabase\uC5D0\uC11C \uACF5\uC720 \uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911\u2026"), React.createElement("style", null, "@keyframes bootspin{to{transform:rotate(360deg)}}.boot-spin{animation:bootspin .7s linear infinite}"));
+  }
+  return React.createElement(Dashboard, null);
+}
+try {
+  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
+} catch (err) {
+  var r = document.getElementById("root");
+  if (r) r.innerHTML = '<div style="padding:28px;font-family:Noto Sans KR,sans-serif;color:#991B1B;max-width:720px;margin:40px auto"><div style="font-size:18px;font-weight:700;margin-bottom:10px">렌더링 오류</div><div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;white-space:pre-wrap">' + String(err && err.message || err) + '</div></div>';
+  console.error(err);
+}
+</script>
+</body>
+</html>
