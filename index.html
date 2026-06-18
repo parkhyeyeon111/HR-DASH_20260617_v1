@@ -1872,10 +1872,11 @@ function SummaryBar({
     return LEAVE_KW.some(k => nm.indexOf(k) >= 0);
   }).sort((a, b) => String(a.due).localeCompare(String(b.due)));
   const leaveCount = leaveTasks.length;
-  const leaveSummary = leaveTasks.slice(0, 2).map(t => {
+  // 당월 모든 연차/휴가/반차를 날짜별로 누락 없이 "이름 일정명 · 월/일" 형태로 모두 나열 (사람 기준 중복 제거 안 함)
+  const leaveSummary = leaveTasks.map(t => {
     const who = t.name || memberName(t.asgn) || "";
-    const d = String(t.due || "").slice(5).replace("-", "/"); // MM/DD
-    return (who ? who + " " : "") + (t.task || "") + (d ? " · " + d : "");
+    const mmdd = String(t.due || "").slice(5).replace("-", "/"); // MM/DD
+    return (who ? who + " " : "") + (t.task || "") + (mmdd ? " · " + mmdd : "");
   });
   return React.createElement("div", {
     style: {
@@ -1967,14 +1968,21 @@ function SummaryBar({
     }
   }, "\uCD1D " + leaveCount + "\uAC74"), React.createElement("div", null, React.createElement("div", {
     className: "stat-sub"
-  }, "\uB2F9\uC6D4 \uC5F0\uCC28/\uD734\uAC00/\uBC18\uCC28"), leaveSummary.length ? leaveSummary.map((s, i) => React.createElement("div", {
+  }, "\uB2F9\uC6D4 \uC5F0\uCC28/\uD734\uAC00/\uBC18\uCC28"), leaveSummary.length ? React.createElement("div", {
+    style: {
+      maxHeight: 72,
+      overflowY: "auto",
+      marginTop: 2
+    }
+  }, leaveSummary.map((s, i) => React.createElement("div", {
     key: i,
     style: {
       fontSize: 10,
       color: "#0D9488",
-      marginTop: 2
+      marginTop: 1,
+      whiteSpace: "nowrap"
     }
-  }, s)) : React.createElement("div", {
+  }, s))) : React.createElement("div", {
     style: {
       fontSize: 10,
       color: "var(--t3)",
@@ -2921,28 +2929,68 @@ function PageOB({
   gTmpl,
   setGTmpl
 }) {
-  const [mgrF, setMgrF] = useState("ALL");
-  const [typeF, setTypeF] = useState("ALL");
-  const [monthF, setMonthF] = useState("ALL");
+  const [mgrF, setMgrF] = useState("ALL");   // C열 담당자
+  const [typeF, setTypeF] = useState("ALL");  // D열 유형(반영/구분)
+  const [monthF, setMonthF] = useState("ALL"); // A열 급여반영월
+  const [writerF, setWriterF] = useState("ALL"); // B열 작성자
+  const [deptF, setDeptF] = useState("ALL");     // E열 사업부
+  const [empIdF, setEmpIdF] = useState("");      // F열 사번
+  const [targetF, setTargetF] = useState("");    // G열 대상자
+  const [contentF, setContentF] = useState("");  // H열 내용
+  const [v1F, setV1F] = useState("ALL");         // K열 1차 검증
+  const [v2F, setV2F] = useState("ALL");         // L열 2차 검증
+  const [finalF, setFinalF] = useState("ALL");   // M열 최종완료
+  const resetOBFilters = () => {
+    setMonthF("ALL"); setWriterF("ALL"); setMgrF("ALL"); setTypeF("ALL"); setDeptF("ALL");
+    setEmpIdF(""); setTargetF(""); setContentF(""); setV1F("ALL"); setV2F("ALL"); setFinalF("ALL");
+  };
   const [selRow, setSelRow] = useState(null);
   const [routineModal, setRoutineModal] = useState(null);
   const [clRefresh, setClRefresh] = useState(0);
+  // M열 최종완료: 해당 행 체크리스트가 존재하고 모든 항목이 완료면 true
+  const rowFinalDone = row => {
+    const mgrName = String(row.manager || "").trim();
+    const target = String(row.targetName || "").trim();
+    const mtype = String(row.isReflected || "").trim();
+    if (!mtype || !target) return false;
+    const k = `cl__${mgrName.replace(/\s/g, "_")}__${target.replace(/\s/g, "_")}__${mtype.replace(/\s/g, "_")}`;
+    const items = SheetDB.getCL(k) || [];
+    return items.length > 0 && items.every(x => x && x.done);
+  };
   const moveRows = useMemo(() => (apiRows || []).filter(r => MOVE_TYPES.includes(String(r.isReflected || "").trim())), [apiRows]);
   const months = useMemo(() => [...new Set(moveRows.map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [moveRows]);
   const managers = useMemo(() => [...new Set(moveRows.map(r => String(r.manager || "").trim()).filter(Boolean))], [moveRows]);
+  const obWriters = useMemo(() => [...new Set(moveRows.map(r => String(r.writer || "").trim()).filter(Boolean))].sort(), [moveRows]);
+  const obDepts = useMemo(() => [...new Set(moveRows.map(r => String(r.department || "").trim()).filter(Boolean))].sort(), [moveRows]);
   const filtered = useMemo(() => moveRows.filter(r => {
-    if (monthF !== "ALL" && String(r.reflectMonth || "").trim() !== monthF) return false;
-    if (mgrF !== "ALL" && String(r.manager || "").trim() !== mgrF) return false;
-    if (typeF !== "ALL" && String(r.isReflected || "").trim() !== typeF) return false;
+    if (monthF !== "ALL" && String(r.reflectMonth || "").trim() !== monthF) return false;       // A
+    if (writerF !== "ALL" && String(r.writer || "").trim() !== writerF) return false;            // B
+    if (mgrF !== "ALL" && String(r.manager || "").trim() !== mgrF) return false;                 // C
+    if (typeF !== "ALL" && String(r.isReflected || "").trim() !== typeF) return false;           // D
+    if (deptF !== "ALL" && String(r.department || "").trim() !== deptF) return false;            // E
+    if (empIdF.trim() && String(r.employeeId || "").toLowerCase().indexOf(empIdF.trim().toLowerCase()) < 0) return false; // F
+    if (targetF.trim() && String(r.targetName || "").toLowerCase().indexOf(targetF.trim().toLowerCase()) < 0) return false; // G
+    if (contentF.trim() && String(r.content || "").toLowerCase().indexOf(contentF.trim().toLowerCase()) < 0) return false;  // H
+    if (v1F !== "ALL" && (v1F === "done" ? !r.verify1Done : !!r.verify1Done)) return false;       // K
+    if (v2F !== "ALL" && (v2F === "done" ? !r.verify2Done : !!r.verify2Done)) return false;       // L
+    if (finalF !== "ALL") { const fin = rowFinalDone(r); if (finalF === "done" ? !fin : fin) return false; } // M
     return true;
-  }), [moveRows, monthF, mgrF, typeF]);
-  const typeCounts = useMemo(() => {
+  }), [moveRows, monthF, writerF, mgrF, typeF, deptF, empIdF, targetF, contentF, v1F, v2F, finalF, clRefresh]);
+  // 유형별 총건수 + M최종완료 기준 완료/미완료 분할 집계
+  const typeStats = useMemo(() => {
     const c = {};
     MOVE_TYPES.forEach(t => {
-      c[t] = moveRows.filter(r => String(r.isReflected || "").trim() === t).length;
+      const rows = moveRows.filter(r => String(r.isReflected || "").trim() === t);
+      const done = rows.filter(rowFinalDone).length;
+      c[t] = { total: rows.length, done: done, undone: rows.length - done };
     });
     return c;
-  }, [moveRows]);
+  }, [moveRows, clRefresh]);
+  const typeCounts = useMemo(() => {
+    const c = {};
+    MOVE_TYPES.forEach(t => { c[t] = (typeStats[t] && typeStats[t].total) || 0; });
+    return c;
+  }, [typeStats]);
   useEffect(() => {
     setSelRow(null);
   }, [mgrF]);
@@ -3050,7 +3098,37 @@ function PageOB({
         padding: "1px 5px",
         borderRadius: 8
       }
-    }, "공통 " + gCnt)));
+    }, "공통 " + gCnt)), React.createElement("div", {
+      style: {
+        marginTop: 7,
+        display: "flex",
+        gap: 5
+      }
+    }, React.createElement("div", {
+      style: {
+        flex: 1,
+        fontSize: 9,
+        fontWeight: 800,
+        textAlign: "center",
+        padding: "3px 0",
+        borderRadius: 6,
+        background: "#F0FDF4",
+        color: "#16A34A",
+        border: "1px solid #BBF7D0"
+      }
+    }, "완료 " + ((typeStats[t] && typeStats[t].done) || 0) + "건"), React.createElement("div", {
+      style: {
+        flex: 1,
+        fontSize: 9,
+        fontWeight: 800,
+        textAlign: "center",
+        padding: "3px 0",
+        borderRadius: 6,
+        background: "#FEF9C3",
+        color: "#92400E",
+        border: "1px solid #FDE68A"
+      }
+    }, "미완료 " + ((typeStats[t] && typeStats[t].undone) || 0) + "건")));
   })), apiStatus !== "ok" && React.createElement("div", {
     style: {
       padding: "8px 14px",
@@ -3118,13 +3196,52 @@ function PageOB({
         color: tm.color
       } : {}
     }, m);
-  })), React.createElement("button", {
+  })), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: writerF,
+    onChange: e => setWriterF(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "작성자 전체"), obWriters.map(w => React.createElement("option", { key: w, value: w }, w))), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: deptF,
+    onChange: e => setDeptF(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "사업부 전체"), obDepts.map(d => React.createElement("option", { key: d, value: d }, d))), React.createElement("input", {
+    className: "inp",
+    style: { width: 80, fontSize: 11 },
+    placeholder: "사번",
+    value: empIdF,
+    onChange: e => setEmpIdF(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 90, fontSize: 11 },
+    placeholder: "대상자",
+    value: targetF,
+    onChange: e => setTargetF(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 130, fontSize: 11 },
+    placeholder: "내용 검색",
+    value: contentF,
+    onChange: e => setContentF(e.target.value)
+  }), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: v1F,
+    onChange: e => setV1F(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "1차 전체"), React.createElement("option", { value: "done" }, "1차 완료"), React.createElement("option", { value: "undone" }, "1차 미완료")), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: v2F,
+    onChange: e => setV2F(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "2차 전체"), React.createElement("option", { value: "done" }, "2차 완료"), React.createElement("option", { value: "undone" }, "2차 미완료")), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: finalF,
+    onChange: e => setFinalF(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "최종 전체"), React.createElement("option", { value: "done" }, "최종 완료"), React.createElement("option", { value: "undone" }, "최종 미완료")), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setMonthF("ALL");
-      setMgrF("ALL");
-      setTypeF("ALL");
-    }
+    onClick: resetOBFilters
   }, "\uCD08\uAE30\uD654"), React.createElement("div", {
     style: {
       flex: 1
@@ -4470,9 +4587,20 @@ function PageHistory({
 }) {
   const [vLoad, setVLoad] = useState({});
   const [showUrlEdit, setShowUrlEdit] = useState(false);
-  const [fMonth, setFMonth] = useState("ALL");
-  const [fMgr, setFMgr] = useState("ALL");
-  const [fRefl, setFRefl] = useState("ALL");
+  const [fMonth, setFMonth] = useState("ALL"); // A열 급여반영월
+  const [fMgr, setFMgr] = useState("ALL");     // C열 담당자
+  const [fRefl, setFRefl] = useState("ALL");   // D열 반영/구분
+  const [fWriter, setFWriter] = useState("ALL"); // B열 작성자
+  const [fDept, setFDept] = useState("ALL");     // E열 사업부
+  const [fEmpId, setFEmpId] = useState("");      // F열 사번 (텍스트)
+  const [fTarget, setFTarget] = useState("");    // G열 대상자 (텍스트)
+  const [fContent, setFContent] = useState("");  // H열 내용 (텍스트 검색)
+  const [fV1, setFV1] = useState("ALL");         // K열 1차 검증 여부
+  const [fV2, setFV2] = useState("ALL");         // L열 2차 검증 여부
+  const resetFilters = () => {
+    setFMonth("ALL"); setFMgr("ALL"); setFRefl("ALL"); setFWriter("ALL");
+    setFDept("ALL"); setFEmpId(""); setFTarget(""); setFContent(""); setFV1("ALL"); setFV2("ALL");
+  };
   const [showAdd, setShowAdd] = useState(false);
   const EMPTY = {
     reflectMonth: "",
@@ -4510,12 +4638,22 @@ function PageHistory({
   const months = useMemo(() => [...new Set((apiRows || []).map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const managers = useMemo(() => [...new Set((apiRows || []).map(r => String(r.manager || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const reflOpts = useMemo(() => [...new Set((apiRows || []).map(r => String(r.isReflected || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const writers = useMemo(() => [...new Set((apiRows || []).map(r => String(r.writer || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const depts = useMemo(() => [...new Set((apiRows || []).map(r => String(r.department || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const filtered = useMemo(() => (apiRows || []).filter(r => {
-    if (fMonth !== "ALL" && String(r.reflectMonth || "").trim() !== fMonth) return false;
-    if (fMgr !== "ALL" && String(r.manager || "").trim() !== fMgr) return false;
-    if (fRefl !== "ALL" && String(r.isReflected || "").trim() !== fRefl) return false;
+    // 모든 조건 동시 일치(AND)
+    if (fMonth !== "ALL" && String(r.reflectMonth || "").trim() !== fMonth) return false;     // A열
+    if (fWriter !== "ALL" && String(r.writer || "").trim() !== fWriter) return false;         // B열
+    if (fMgr !== "ALL" && String(r.manager || "").trim() !== fMgr) return false;              // C열
+    if (fRefl !== "ALL" && String(r.isReflected || "").trim() !== fRefl) return false;        // D열
+    if (fDept !== "ALL" && String(r.department || "").trim() !== fDept) return false;         // E열
+    if (fEmpId.trim() && String(r.employeeId || "").toLowerCase().indexOf(fEmpId.trim().toLowerCase()) < 0) return false; // F열
+    if (fTarget.trim() && String(r.targetName || "").toLowerCase().indexOf(fTarget.trim().toLowerCase()) < 0) return false; // G열
+    if (fContent.trim() && String(r.content || "").toLowerCase().indexOf(fContent.trim().toLowerCase()) < 0) return false;  // H열
+    if (fV1 !== "ALL" && (fV1 === "done" ? !r.verify1Done : !!r.verify1Done)) return false;   // K열 1차 검증
+    if (fV2 !== "ALL" && (fV2 === "done" ? !r.verify2Done : !!r.verify2Done)) return false;   // L열 2차 검증
     return true;
-  }), [apiRows, fMonth, fMgr, fRefl]);
+  }), [apiRows, fMonth, fWriter, fMgr, fRefl, fDept, fEmpId, fTarget, fContent, fV1, fV2]);
   async function postAction(body) {
     return fetch(apiUrl, {
       method: "POST",
@@ -4948,13 +5086,47 @@ function PageHistory({
   }, "\uAD6C\uBD84 \uC804\uCCB4"), reflOpts.map(r => React.createElement("option", {
     key: r,
     value: r
-  }, r))), React.createElement("button", {
+  }, r))), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: fWriter,
+    onChange: e => setFWriter(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "작성자 전체"), writers.map(w => React.createElement("option", { key: w, value: w }, w))), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: fDept,
+    onChange: e => setFDept(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "사업부 전체"), depts.map(d => React.createElement("option", { key: d, value: d }, d))), React.createElement("input", {
+    className: "inp",
+    style: { width: 84, fontSize: 11 },
+    placeholder: "사번",
+    value: fEmpId,
+    onChange: e => setFEmpId(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 90, fontSize: 11 },
+    placeholder: "대상자",
+    value: fTarget,
+    onChange: e => setFTarget(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 130, fontSize: 11 },
+    placeholder: "내용 검색",
+    value: fContent,
+    onChange: e => setFContent(e.target.value)
+  }), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: fV1,
+    onChange: e => setFV1(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "1차 전체"), React.createElement("option", { value: "done" }, "1차 완료"), React.createElement("option", { value: "undone" }, "1차 미완료")), React.createElement("select", {
+    className: "inp",
+    style: { width: "auto", fontSize: 11 },
+    value: fV2,
+    onChange: e => setFV2(e.target.value)
+  }, React.createElement("option", { value: "ALL" }, "2차 전체"), React.createElement("option", { value: "done" }, "2차 완료"), React.createElement("option", { value: "undone" }, "2차 미완료")), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setFMonth("ALL");
-      setFMgr("ALL");
-      setFRefl("ALL");
-    }
+    onClick: resetFilters
   }, "\uCD08\uAE30\uD654")), React.createElement("div", {
     style: {
       padding: "0 18px 16px"
@@ -5227,6 +5399,12 @@ function PageMemo({
   const [err, setErr] = useState("");
   const [filterCat, setFilterCat] = useState("ALL");
   const [filterDate, setFilterDate] = useState("");
+  const [fAuthor, setFAuthor] = useState("");   // 작성자 검색
+  const [fContentQ, setFContentQ] = useState(""); // 업무 내용 검색
+  const [fRemarkQ, setFRemarkQ] = useState("");   // 비고 검색
+  const resetMemoFilters = () => {
+    setFilterCat("ALL"); setFilterDate(""); setFAuthor(""); setFContentQ(""); setFRemarkQ("");
+  };
   const fromCloud = useRef(false);
   useEffect(() => {
     setDate(selectedDate || todayStr);
@@ -5275,6 +5453,9 @@ function PageMemo({
   const filtered = (memos || []).filter(m => {
     if (filterCat !== "ALL" && m.cat !== filterCat) return false;
     if (filterDate && m.date !== filterDate) return false;
+    if (fAuthor.trim() && String(m.author || "").toLowerCase().indexOf(fAuthor.trim().toLowerCase()) < 0) return false;
+    if (fContentQ.trim() && String(m.content || "").toLowerCase().indexOf(fContentQ.trim().toLowerCase()) < 0) return false;
+    if (fRemarkQ.trim() && String(m.remark || "").toLowerCase().indexOf(fRemarkQ.trim().toLowerCase()) < 0) return false;
     return true;
   });
   const TH = {
@@ -5494,12 +5675,27 @@ function PageMemo({
     value: filterDate,
     onChange: e => setFilterDate(e.target.value),
     title: "\uB0A0\uC9DC \uD544\uD130"
-  }), (filterCat !== "ALL" || filterDate) && React.createElement("button", {
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 90, fontSize: 11 },
+    placeholder: "작성자",
+    value: fAuthor,
+    onChange: e => setFAuthor(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 140, fontSize: 11 },
+    placeholder: "업무 내용 검색",
+    value: fContentQ,
+    onChange: e => setFContentQ(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 110, fontSize: 11 },
+    placeholder: "비고 검색",
+    value: fRemarkQ,
+    onChange: e => setFRemarkQ(e.target.value)
+  }), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setFilterCat("ALL");
-      setFilterDate("");
-    }
+    onClick: resetMemoFilters
   }, "\uCD08\uAE30\uD654"))), React.createElement("div", {
     className: "card-body",
     style: {
@@ -5957,11 +6153,19 @@ function detectInsType(data) {
   }
   return pensionScore > healthScore ? "국민연금" : "건강보험";
 }
+// 사업부 라벨 정규화: 빈칸/— → '미분류' (드롭다운·삭제 필터 공통 사용)
+function insDeptLabel(d) {
+  const v = String(d == null ? "" : d).trim();
+  return !v || v === "—" || v === "-" || v === "ー" ? "미분류" : v;
+}
 function parsePubHealth(data) {
   const rrnMap = {};
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
     if (!r || !r[6] || String(r[6]).trim() === "") continue;
+    const _nm = String(r[6]).replace(/\s/g, "");
+    if (_nm === "총계" || _nm === "합계" || _nm === "소계") continue; // 합산행 제외
+    if (String(r[8] || "").trim() === "사업부") continue;            // 고스트 '사업부' 행 제외
     const rk = rrnDigits(r[7]);
     const key = rk || "_" + String(r[6]).trim() + "_" + i;
     if (rrnMap[key]) {
@@ -5992,6 +6196,9 @@ function parsePubPension(data) {
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
     if (!r || !r[2] || String(r[2]).trim() === "") continue;
+    const _nm = String(r[2]).replace(/\s/g, "");
+    if (_nm === "총계" || _nm === "합계" || _nm === "소계") continue; // 합산행 제외
+    if (String(r[4] || "").trim() === "사업부") continue;            // 고스트 '사업부' 행 제외
     const rk = rrnDigits(r[3]);
     const key = rk || "_" + String(r[2]).trim() + "_" + i;
     if (rrnMap[key]) {
@@ -6042,6 +6249,9 @@ function parsePay(data) {
     const r = data[i];
     const name = r ? String(r[cName] || "").trim() : "";
     if (!name) continue;
+    const nn = name.replace(/\s/g, "");
+    if (nn === "총계" || nn === "합계" || nn === "소계") continue; // 총계/합계/소계 합산행 제외
+    if (String(r[cDept] || "").trim() === "사업부") continue;     // 타이틀 누락된 '사업부' 고스트 행 제외
     const rk = rrnDigits(r[cRrn]);
     const key = rk || "_" + name + "_" + i;
     const row = {
@@ -6197,6 +6407,7 @@ function Page4Insurance({
   const driveQueue = useRef(Promise.resolve());
   const commitChain = useRef(Promise.resolve());
   const commitPending = useRef(0);
+  const cmpScrollRef = useRef(null); // [상세 비교] 가로 스크롤 컨테이너 ref (휠 가로 스크롤용)
   function insKeyOf(r) {
     return rrnDigits(r.rrn) || "_" + (r.name || "") + "_" + (r.empId || "") + "_" + (r.dept || "");
   }
@@ -6506,8 +6717,8 @@ function Page4Insurance({
       return;
     }
     if (!confirm(curYM + " 데이터에서 " + deptDeleteSel + " 사업부를 삭제할까요?")) return;
-    const nextPub = (liveRef.current.pub || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
-    const nextPay = (liveRef.current.pay || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
+    const nextPub = (liveRef.current.pub || []).filter(r => insDeptLabel(r.dept) !== deptDeleteSel);
+    const nextPay = (liveRef.current.pay || []).filter(r => insDeptLabel(r.dept) !== deptDeleteSel);
     commit({
       pub: nextPub,
       pay: nextPay,
@@ -6518,6 +6729,27 @@ function Page4Insurance({
       isLoadingRef.current = false;
     });
     setDeptDeleteSel("");
+  }
+  // [상세 비교] 개별 행 삭제: 해당 사람(주민번호 우선, 없으면 이름)을 pub/pay 에서 제거 후 Supabase 즉시 반영
+  function deleteRowById(row) {
+    if (!confirm("이 행 데이터를 삭제할까요?")) return;
+    const rk = rrnDigits(row && row.rrn);
+    const target = String(row && row.name || "").trim();
+    const matchPerson = r => {
+      if (rk) return rrnDigits(r && r.rrn) === rk;
+      return String(r && r.name || "").trim() === target && !rrnDigits(r && r.rrn);
+    };
+    const nextPub = (liveRef.current.pub || []).filter(r => !matchPerson(r));
+    const nextPay = (liveRef.current.pay || []).filter(r => !matchPerson(r));
+    commit({
+      pub: nextPub,
+      pay: nextPay,
+      reasons: liveRef.current.reasons,
+      custom: liveRef.current.custom,
+      checked: liveRef.current.checked
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
   }
   function downloadSample(type) {
     let headers, sampleRow, sheetName;
@@ -6718,6 +6950,24 @@ function Page4Insurance({
   }, fmtKRW(v));
   const hasHealth = merged.some(r => r.insType === "건강보험" || r.health > 0 || r.care > 0 || r.pay && ((r.pay.health || 0) > 0 || (r.pay.care || 0) > 0));
   const hasPension = merged.some(r => r.insType === "국민연금" || r.pension > 0 || r.pay && (r.pay.pension || 0) > 0);
+  // [상세 비교] 마우스 휠(또는 Shift+휠) → 가로 스크롤. React onWheel은 passive라 preventDefault가 막힐 수 있어 네이티브 리스너로 등록.
+  useEffect(() => {
+    const el = cmpScrollRef.current;
+    if (!el) return;
+    const onWheel = e => {
+      if (el.scrollWidth <= el.clientWidth + 1 || e.deltaY === 0) return; // 가로 오버플로 없으면 기본 동작
+      const atLeft = el.scrollLeft <= 0;
+      const atRight = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+      // 가로 끝에 도달한 채 그 방향으로 더 굴리면 세로 스크롤을 막지 않음
+      if (e.deltaY < 0 && atLeft || e.deltaY > 0 && atRight) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, {
+      passive: false
+    });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [viewRows.length, hasHealth, hasPension]);
   function downloadVerificationExcel() {
     const dept = deptView === "전체" ? "전체" : deptView;
     const rows = viewRows;
@@ -7096,7 +7346,7 @@ function Page4Insurance({
     }
   }, React.createElement("option", {
     value: ""
-  }, "\uC0AC\uC5C5\uBD80 \uC120\uD0DD"), [...new Set(rawPub.map(r => r.dept || "미분류"))].sort().map(d => React.createElement("option", {
+  }, "\uC0AC\uC5C5\uBD80 \uC120\uD0DD"), [...new Set([...(rawPub || []), ...(rawPay || [])].map(r => insDeptLabel(r.dept)))].sort().map(d => React.createElement("option", {
     key: d,
     value: d
   }, d))), React.createElement("button", {
@@ -7389,8 +7639,13 @@ function Page4Insurance({
     strokeLinecap: "round",
     strokeLinejoin: "round"
   })), (deptView === "전체" ? "전체 사업부" : "[" + deptView + "]") + " 엑셀 다운로드"))), React.createElement("div", {
+    ref: cmpScrollRef,
     style: {
-      overflowX: "auto"
+      maxHeight: 600,
+      overflow: "auto",
+      overscrollBehaviorX: "contain",
+      border: "1px solid var(--border2)",
+      borderRadius: 8
     }
   }, React.createElement("table", {
     className: "xtbl",
@@ -7505,7 +7760,13 @@ function Page4Insurance({
       ...TH(),
       minWidth: 160
     }
-  }, "\uC0AC\uC720"))), React.createElement("tbody", null, viewRows.map(row => {
+  }, "\uC0AC\uC720"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 44,
+      textAlign: "center"
+    }
+  }, "\uC0AD\uC81C"))), React.createElement("tbody", null, viewRows.map(row => {
     const isDone = !!checked[row.id];
     const rowBg = row.autoOk ? "#F0FDF4" : isDone ? "#F0FDF4" : row.mismatch ? "rgba(254,226,226,.45)" : "#fff";
     const r = reasons[row.id] || "";
@@ -7635,7 +7896,28 @@ function Page4Insurance({
         fontWeight: 700,
         whiteSpace: "nowrap"
       }
-    }, row.autoOk ? "자동완료" : "정상"))));
+    }, row.autoOk ? "자동완료" : "정상"))), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        textAlign: "center"
+      }
+    }, React.createElement("button", {
+      onClick: () => deleteRowById(row),
+      title: "이 행 삭제",
+      style: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        border: "1px solid #FCA5A5",
+        background: "#FEF2F2",
+        color: "#DC2626",
+        cursor: "pointer",
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1
+      }
+    }, "\u2715")));
   }))))), !hasData && React.createElement("div", {
     style: {
       textAlign: "center",
