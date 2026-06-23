@@ -82,7 +82,7 @@ html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;background
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .topbar{height:54px;padding:0 20px;background:#fff;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 4px rgba(14,165,233,.08)}
 .pgcont{flex:1;overflow-y:auto;padding:16px}
-.card{background:#fff;border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.card{background:#fff;border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:visible}
 .card-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#fff,#F8FBFF)}
 .card-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--sky-deep)}
 .card-icon{width:28px;height:28px;border-radius:8px;background:var(--sky-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--sky-m)}
@@ -226,6 +226,7 @@ const SheetDB = function () {
     ts: null,
     routines: null,
     memos: null,
+    transfers: null,
     gTmpl: null,
     guide: null,
     adminName: null,
@@ -267,7 +268,7 @@ const SheetDB = function () {
       if (sv.length === 0 && Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush(k, cur, k); return; }
       STORE[k] = sv;
     };
-    ["team", "employees", "tasks", "routines", "memos"].forEach(healArr);
+    ["team", "employees", "tasks", "routines", "memos", "transfers"].forEach(healArr);
     const healObj = (k) => {
       const sv = d[k], cur = STORE[k];
       if (!(sv && typeof sv === "object" && !Array.isArray(sv)) || dirty.has(k)) return;
@@ -468,7 +469,7 @@ const SheetDB = function () {
   async function forcePushAll(onProgress) {
     if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
     const jobs = [];
-    ["team", "employees", "tasks", "ts", "routines", "memos", "gTmpl", "guide", "adminName"].forEach(c => {
+    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "gTmpl", "guide", "adminName"].forEach(c => {
       const v = STORE[c];
       if (v !== null && v !== undefined) jobs.push([c, v]);
     });
@@ -928,19 +929,19 @@ function DelBtn({
       justifyContent: "center",
       border: "none",
       background: h ? "#FEF2F2" : "transparent",
-      color: h ? "#EF4444" : "#CBD5E1",
+      color: h ? "#EF4444" : "#475569",
       cursor: "pointer",
       flexShrink: 0
     }
   }, React.createElement("svg", {
-    width: "10",
-    height: "10",
+    width: "12",
+    height: "12",
     viewBox: "0 0 14 14",
     fill: "none"
   }, React.createElement("path", {
     d: "M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M5.5 6.5v4M8.5 6.5v4M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4",
     stroke: "currentColor",
-    strokeWidth: "1.3",
+    strokeWidth: "1.6",
     strokeLinecap: "round",
     strokeLinejoin: "round"
   })));
@@ -963,22 +964,31 @@ function EditBtn({
       justifyContent: "center",
       border: "none",
       background: h ? "#EFF6FF" : "transparent",
-      color: h ? "#2563EB" : "#CBD5E1",
+      color: h ? "#2563EB" : "#475569",
       cursor: "pointer",
       flexShrink: 0
     }
   }, React.createElement("svg", {
-    width: "10",
-    height: "10",
+    width: "12",
+    height: "12",
     viewBox: "0 0 14 14",
     fill: "none"
   }, React.createElement("path", {
     d: "M9.4 2.3l2.3 2.3L5 11.3l-2.6.6.6-2.6 6.4-7z",
     stroke: "currentColor",
-    strokeWidth: "1.3",
+    strokeWidth: "1.6",
     strokeLinecap: "round",
     strokeLinejoin: "round"
   })));
+}
+// 일정이 '팀원 휴가'인지 판정: isLeave 속성 우선, 없으면(옛 데이터) "연차/반차"가 독립 토큰일 때만 휴가로 취급.
+//  → "배우자출산휴가 확인서 제출" 등 서술형 업무 문장은 일반 업무로 분류(텍스트 오인 차단)
+function isLeaveSchedule(t) {
+  if (!t) return false;
+  if (t.isLeave === true) return true;
+  if (t.isLeave === false) return false;
+  const nm = String(t.task || "");
+  return /(^|[\s,()\/·\-])(연차|반차)([\s,()\/·\-]|$)/.test(nm);
 }
 function TaskEditModal({
   task,
@@ -991,6 +1001,7 @@ function TaskEditModal({
   const [asgn, setAsgn] = useState(task.asgn || "미지정");
   const [urgent, setUrgent] = useState(!!task.urgent);
   const [legal, setLegal] = useState(!!task.legal);
+  const [isLeave, setIsLeave] = useState(typeof task.isLeave === "boolean" ? task.isLeave : isLeaveSchedule(task));
   const [note, setNote] = useState(task.note || "");
   const inpRef = useRef(null);
   useEffect(() => {
@@ -1004,6 +1015,7 @@ function TaskEditModal({
       asgn,
       urgent,
       legal,
+      isLeave,
       note
     });
   }
@@ -1012,6 +1024,20 @@ function TaskEditModal({
     sub: due + " 기준",
     onClose: onClose
   }, React.createElement(FR, {
+    label: "\uC77C\uC815 \uC885\uB958"
+  }, React.createElement("div", {
+    style: { display: "flex", gap: 8 }
+  }, [["일반 업무", false, "#0EA5E9"], ["팀원 휴가", true, "#DB2777"]].map(([lbl, val, clr]) => React.createElement("button", {
+    key: lbl,
+    type: "button",
+    onClick: () => setIsLeave(val),
+    style: {
+      flex: 1, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 8, cursor: "pointer",
+      border: "1px solid " + (isLeave === val ? clr : "var(--border2)"),
+      background: isLeave === val ? clr : "#fff",
+      color: isLeave === val ? "#fff" : "var(--t2)"
+    }
+  }, lbl)))), React.createElement(FR, {
     label: "\uC5C5\uBB34 \uB0B4\uC6A9"
   }, React.createElement("input", {
     ref: inpRef,
@@ -1498,6 +1524,19 @@ function BigCal({
     });
     return m;
   }, [tasks, calYear, calMonth]);
+  // 달력 '칸 안에서만' 동일 일정명(task) 중복 제거 (우측 To-Do 패널 selEvs 는 담당자별 전체 유지)
+  // 키를 정규화(앞뒤 공백 제거 + 연속 공백 1칸 + 대소문자 무시)하여, 보이지 않는 공백차이까지 같은 이름으로 처리
+  const normTask = t => String(t == null ? "" : t).trim().replace(/\s+/g, " ").toLowerCase();
+  const uniqByTask = arr => {
+    const seen = new Set();
+    const out = [];
+    (arr || []).forEach(e => {
+      const key = (e && e.task != null && normTask(e.task)) || ("__" + JSON.stringify(e));
+      if (!seen.has(key)) { seen.add(key); out.push(e); }
+    });
+    return out;
+  };
+  const isLeaveTask = e => isLeaveSchedule(e); // 팀원 휴가(속성 기준) → 핑크 스타일
   const selEvs = evMap[selDay] || [];
   const asgnList = useMemo(() => [...new Set(selEvs.map(t => t.asgn || "미지정"))], [selEvs]);
   useEffect(() => {
@@ -1587,6 +1626,7 @@ function BigCal({
     const isTd = isTod(d);
     const isSd = isSelDate(d) && !isSel;
     const hasEv = d && (evMap[d] || []).length > 0;
+    const dayEvs = d ? uniqByTask(evMap[d] || []) : []; // 칸 표시용: 동일 일정명 1건만
     let cls = "cal-cell";
     if (isSel) cls += " active";else if (isTd || isSd) cls += " today";
     if (hasEv) cls += " has-ev";
@@ -1605,27 +1645,30 @@ function BigCal({
         fontWeight: 700,
         color: isSel ? "#fff" : isTd ? "var(--sky-d)" : "var(--t2)"
       }
-    }, d), d && (evMap[d] || []).slice(0, 2).map((e, j) => React.createElement("div", {
-      key: j,
-      style: {
-        fontSize: 9,
-        borderRadius: 3,
-        padding: "1px 3px",
-        marginTop: 2,
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        textOverflow: "ellipsis",
-        background: isSel ? "rgba(255,255,255,.2)" : e.legal ? "#FEF2F2" : "var(--sky-l)",
-        color: isSel ? "#fff" : e.legal ? "#DC2626" : "var(--sky-d)",
-        fontWeight: 600
-      }
-    }, e.task.slice(0, 6))), d && (evMap[d] || []).length > 2 && React.createElement("div", {
+    }, d), d && dayEvs.slice(0, 2).map((e, j) => {
+      const leave = isLeaveTask(e); // 연차/휴가/반차 → 핑크 (법정 빨강보다 우선)
+      return React.createElement("div", {
+        key: j,
+        style: {
+          fontSize: 9,
+          borderRadius: 3,
+          padding: "1px 3px",
+          marginTop: 2,
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          textOverflow: "ellipsis",
+          background: isSel ? "rgba(255,255,255,.2)" : leave ? "#FDF2F8" : e.legal ? "#FEF2F2" : "var(--sky-l)",
+          color: isSel ? "#fff" : leave ? "#DB2777" : e.legal ? "#DC2626" : "var(--sky-d)",
+          fontWeight: 600
+        }
+      }, e.task);
+    }), d && dayEvs.length > 2 && React.createElement("div", {
       style: {
         fontSize: 9,
         color: "var(--t3)",
         marginTop: 1
       }
-    }, "+" + (evMap[d].length - 2)));
+    }, "+" + (dayEvs.length - 2)));
   })))), React.createElement("div", {
     className: "card",
     style: {
@@ -1843,22 +1886,21 @@ function SummaryBar({
   const monthDone = monthTasks.filter(t => ts[t.id] === "completed").length;
   const monthPct = monthTasks.length ? Math.round(monthDone / monthTasks.length * 100) : 0;
   const monthLabel = KOR_M[calMonth] + " " + calYear;
-  // [휴가일자] 당월 일정 중 '연차/휴가/반차' 포함 일정 카운트 + 멤버/날짜 요약
-  const LEAVE_KW = ["연차", "휴가", "반차"];
+  // [휴가일자] 당월 일정 중 '팀원 휴가' 속성(isLeave) 일정만 집계 (텍스트 매칭 제거)
   const memberName = id => {
     const m = (team || []).find(x => x && x.id === id);
     return m ? m.name : "";
   };
   const leaveTasks = (tasks || []).filter(t => {
     if (!t || !t.due || !String(t.due).startsWith(moStr)) return false;
-    const nm = String(t.task || "");
-    return LEAVE_KW.some(k => nm.indexOf(k) >= 0);
+    return isLeaveSchedule(t); // isLeave 속성 우선, 옛 데이터는 연차/반차 독립 토큰만 폴백
   }).sort((a, b) => String(a.due).localeCompare(String(b.due)));
   const leaveCount = leaveTasks.length;
-  const leaveSummary = leaveTasks.slice(0, 2).map(t => {
+  // 당월 모든 연차/휴가/반차를 날짜별로 누락 없이 "이름 일정명 · 월/일" 형태로 모두 나열 (사람 기준 중복 제거 안 함)
+  const leaveSummary = leaveTasks.map(t => {
     const who = t.name || memberName(t.asgn) || "";
-    const d = String(t.due || "").slice(5).replace("-", "/"); // MM/DD
-    return (who ? who + " " : "") + (t.task || "") + (d ? " · " + d : "");
+    const mmdd = String(t.due || "").slice(5).replace("-", "/"); // MM/DD
+    return (who ? who + " " : "") + (t.task || "") + (mmdd ? " · " + mmdd : "");
   });
   return React.createElement("div", {
     style: {
@@ -1950,14 +1992,21 @@ function SummaryBar({
     }
   }, "\uCD1D " + leaveCount + "\uAC74"), React.createElement("div", null, React.createElement("div", {
     className: "stat-sub"
-  }, "\uB2F9\uC6D4 \uC5F0\uCC28/\uD734\uAC00/\uBC18\uCC28"), leaveSummary.length ? leaveSummary.map((s, i) => React.createElement("div", {
+  }, "\uB2F9\uC6D4 \uC5F0\uCC28/\uD734\uAC00/\uBC18\uCC28"), leaveSummary.length ? React.createElement("div", {
+    style: {
+      maxHeight: 72,
+      overflowY: "auto",
+      marginTop: 2
+    }
+  }, leaveSummary.map((s, i) => React.createElement("div", {
     key: i,
     style: {
       fontSize: 10,
       color: "#0D9488",
-      marginTop: 2
+      marginTop: 1,
+      whiteSpace: "nowrap"
     }
-  }, s)) : React.createElement("div", {
+  }, s))) : React.createElement("div", {
     style: {
       fontSize: 10,
       color: "var(--t3)",
@@ -2203,6 +2252,7 @@ function ScheduleForm({
   const [startDate, setStartDate] = useState(todayStr);
   const [day, setDay] = useState(15);
   const [legal, setLegal] = useState(false);
+  const [isLeave, setIsLeave] = useState(false);
   const [assigneeMode, setAssigneeMode] = useState("all");
   const [selMem, setSelMem] = useState([]);
   const [err, setErr] = useState("");
@@ -2222,6 +2272,7 @@ function ScheduleForm({
       startDate,
       day: Number(day),
       legal,
+      isLeave,
       assignees
     });
   }
@@ -2233,6 +2284,21 @@ function ScheduleForm({
     value: task,
     onChange: e => setTask(e.target.value)
   })), React.createElement(FR, {
+    label: "\uC77C\uC815 \uC885\uB958"
+  }, React.createElement("div", {
+    style: { display: "flex", gap: 8 }
+  }, [["일반 업무", false, "#0EA5E9"], ["팀원 휴가", true, "#DB2777"]].map(([lbl, val, clr]) => React.createElement("button", {
+    key: lbl,
+    type: "button",
+    onClick: () => setIsLeave(val),
+    style: {
+      flex: 1, fontSize: 12, fontWeight: 700, padding: "8px 0", borderRadius: 8, cursor: "pointer",
+      fontFamily: "inherit",
+      border: "1.5px solid " + (isLeave === val ? clr : "var(--border2)"),
+      background: isLeave === val ? clr + "15" : "#fff",
+      color: isLeave === val ? clr : "var(--t3)"
+    }
+  }, lbl)))), React.createElement(FR, {
     label: "\uBC18\uBCF5 \uC8FC\uAE30"
   }, React.createElement("div", {
     style: {
@@ -2351,6 +2417,7 @@ function ScheduleModal({
         category: "일회성",
         urgent: !!payload.legal,
         legal: !!payload.legal,
+        isLeave: !!payload.isLeave,
         asgn: mid,
         note: "일회성 일정",
         empId: null,
@@ -2896,6 +2963,70 @@ function GlobalRoutineModal({
     }
   }, "\xD7")))));
 }
+// 엑셀형 다중 선택 드롭다운: 체크박스 목록 + 콤마 요약 + 전체선택/해제 + 바깥클릭 닫힘
+//  selected: 선택값 배열(빈 배열 = 필터 없음=전체). onChange(nextArray) 로 갱신.
+function MultiSelect({ label, options, selected, onChange, color }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const sel = Array.isArray(selected) ? selected : [];
+  const opts = Array.isArray(options) ? options : [];
+  const accent = color || "#0EA5E9";
+  const toggle = v => onChange(sel.indexOf(v) >= 0 ? sel.filter(x => x !== v) : sel.concat([v]));
+  const summary = sel.length === 0 ? label + " 전체" : sel.join(", ");
+  const miniBtn = on => ({
+    flex: 1, fontSize: 10, fontWeight: 700, padding: "3px 0", borderRadius: 6, cursor: "pointer",
+    border: "1px solid " + (on ? accent : "var(--border2)"),
+    background: on ? accent : "#fff", color: on ? "#fff" : "var(--t2)", fontFamily: "inherit"
+  });
+  return React.createElement("div", {
+    ref: ref,
+    style: { position: "relative", display: "inline-block" }
+  }, React.createElement("button", {
+    type: "button",
+    onClick: () => setOpen(o => !o),
+    title: summary,
+    style: {
+      display: "inline-flex", alignItems: "center", gap: 6, maxWidth: 200,
+      fontSize: 11, padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+      border: "1px solid " + (sel.length ? accent : "var(--border2)"),
+      background: sel.length ? accent + "12" : "#fff",
+      color: sel.length ? accent : "var(--t2)", fontFamily: "inherit", fontWeight: 600
+    }
+  }, React.createElement("span", {
+    style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 158 }
+  }, summary), sel.length > 0 && React.createElement("span", {
+    style: { fontSize: 9, fontWeight: 800, background: accent, color: "#fff", borderRadius: 8, padding: "0 5px", flexShrink: 0 }
+  }, sel.length), React.createElement("span", {
+    style: { fontSize: 8, opacity: .6, flexShrink: 0 }
+  }, "▼")), open && React.createElement("div", {
+    style: {
+      position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 60,
+      minWidth: 168, maxHeight: 264, overflowY: "auto",
+      background: "#fff", border: "1px solid var(--border2)", borderRadius: 10,
+      boxShadow: "0 8px 24px rgba(0,0,0,.14)", padding: 6
+    }
+  }, React.createElement("div", {
+    style: { display: "flex", gap: 6, padding: "2px 2px 6px", borderBottom: "1px solid var(--border)", marginBottom: 4 }
+  }, React.createElement("button", {
+    type: "button", onClick: () => onChange(opts.slice()), style: miniBtn(false)
+  }, "전체선택"), React.createElement("button", {
+    type: "button", onClick: () => onChange([]), style: miniBtn(false)
+  }, "전체해제")), opts.length === 0 ? React.createElement("div", {
+    style: { fontSize: 11, color: "var(--t3)", padding: "6px 8px" }
+  }, "항목 없음") : opts.map(o => React.createElement("label", {
+    key: o,
+    style: { display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, cursor: "pointer", fontSize: 11.5 }
+  }, React.createElement("input", {
+    type: "checkbox", checked: sel.indexOf(o) >= 0, onChange: () => toggle(o),
+    style: { width: 14, height: 14, accentColor: accent, cursor: "pointer" }
+  }), React.createElement("span", { style: { whiteSpace: "nowrap" } }, o)))));
+}
 function PageOB({
   apiRows,
   apiStatus,
@@ -2904,28 +3035,69 @@ function PageOB({
   gTmpl,
   setGTmpl
 }) {
-  const [mgrF, setMgrF] = useState("ALL");
-  const [typeF, setTypeF] = useState("ALL");
-  const [monthF, setMonthF] = useState("ALL");
+  const [mgrF, setMgrF] = useState([]);   // C열 담당자 (다중)
+  const [typeF, setTypeF] = useState([]);  // D열 유형(구분) (다중)
+  const [monthF, setMonthF] = useState([]); // A열 급여반영월 (다중)
+  const [writerF, setWriterF] = useState([]); // B열 작성자 (다중)
+  const [deptF, setDeptF] = useState([]);     // E열 사업부 (다중)
+  const [empIdF, setEmpIdF] = useState("");      // F열 사번 (텍스트)
+  const [targetF, setTargetF] = useState("");    // G열 대상자 (텍스트)
+  const [contentF, setContentF] = useState("");  // H열 내용 (텍스트)
+  const [v1F, setV1F] = useState([]);         // K열 1차 검증 (다중)
+  const [v2F, setV2F] = useState([]);         // L열 2차 검증 (다중)
+  const [finalF, setFinalF] = useState([]);   // M열 최종완료 (다중)
+  const resetOBFilters = () => {
+    setMonthF([]); setWriterF([]); setMgrF([]); setTypeF([]); setDeptF([]);
+    setEmpIdF(""); setTargetF(""); setContentF(""); setV1F([]); setV2F([]); setFinalF([]);
+  };
   const [selRow, setSelRow] = useState(null);
   const [routineModal, setRoutineModal] = useState(null);
   const [clRefresh, setClRefresh] = useState(0);
+  // M열 최종완료: 해당 행 체크리스트가 존재하고 모든 항목이 완료면 true
+  const rowFinalDone = row => {
+    const mgrName = String(row.manager || "").trim();
+    const target = String(row.targetName || "").trim();
+    const mtype = String(row.isReflected || "").trim();
+    if (!mtype || !target) return false;
+    const k = `cl__${mgrName.replace(/\s/g, "_")}__${target.replace(/\s/g, "_")}__${mtype.replace(/\s/g, "_")}`;
+    const items = SheetDB.getCL(k) || [];
+    return items.length > 0 && items.every(x => x && x.done);
+  };
   const moveRows = useMemo(() => (apiRows || []).filter(r => MOVE_TYPES.includes(String(r.isReflected || "").trim())), [apiRows]);
   const months = useMemo(() => [...new Set(moveRows.map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [moveRows]);
   const managers = useMemo(() => [...new Set(moveRows.map(r => String(r.manager || "").trim()).filter(Boolean))], [moveRows]);
+  const obWriters = useMemo(() => [...new Set(moveRows.map(r => String(r.writer || "").trim()).filter(Boolean))].sort(), [moveRows]);
+  const obDepts = useMemo(() => [...new Set(moveRows.map(r => String(r.department || "").trim()).filter(Boolean))].sort(), [moveRows]);
   const filtered = useMemo(() => moveRows.filter(r => {
-    if (monthF !== "ALL" && String(r.reflectMonth || "").trim() !== monthF) return false;
-    if (mgrF !== "ALL" && String(r.manager || "").trim() !== mgrF) return false;
-    if (typeF !== "ALL" && String(r.isReflected || "").trim() !== typeF) return false;
+    // 같은 카테고리 다중선택 = OR, 카테고리 간 = AND. 빈 배열 = 미적용(전체)
+    if (monthF.length && monthF.indexOf(String(r.reflectMonth || "").trim()) < 0) return false;  // A
+    if (writerF.length && writerF.indexOf(String(r.writer || "").trim()) < 0) return false;       // B
+    if (mgrF.length && mgrF.indexOf(String(r.manager || "").trim()) < 0) return false;            // C
+    if (typeF.length && typeF.indexOf(String(r.isReflected || "").trim()) < 0) return false;      // D
+    if (deptF.length && deptF.indexOf(String(r.department || "").trim()) < 0) return false;       // E
+    if (empIdF.trim() && String(r.employeeId || "").toLowerCase().indexOf(empIdF.trim().toLowerCase()) < 0) return false; // F
+    if (targetF.trim() && String(r.targetName || "").toLowerCase().indexOf(targetF.trim().toLowerCase()) < 0) return false; // G
+    if (contentF.trim() && String(r.content || "").toLowerCase().indexOf(contentF.trim().toLowerCase()) < 0) return false;  // H
+    if (v1F.length && v1F.indexOf(r.verify1Done ? "완료" : "미완료") < 0) return false;            // K
+    if (v2F.length && v2F.indexOf(r.verify2Done ? "완료" : "미완료") < 0) return false;            // L
+    if (finalF.length && finalF.indexOf(rowFinalDone(r) ? "완료" : "미완료") < 0) return false;    // M
     return true;
-  }), [moveRows, monthF, mgrF, typeF]);
-  const typeCounts = useMemo(() => {
+  }), [moveRows, monthF, writerF, mgrF, typeF, deptF, empIdF, targetF, contentF, v1F, v2F, finalF, clRefresh]);
+  // 유형별 총건수 + M최종완료 기준 완료/미완료 분할 집계
+  const typeStats = useMemo(() => {
     const c = {};
     MOVE_TYPES.forEach(t => {
-      c[t] = moveRows.filter(r => String(r.isReflected || "").trim() === t).length;
+      const rows = moveRows.filter(r => String(r.isReflected || "").trim() === t);
+      const done = rows.filter(rowFinalDone).length;
+      c[t] = { total: rows.length, done: done, undone: rows.length - done };
     });
     return c;
-  }, [moveRows]);
+  }, [moveRows, clRefresh]);
+  const typeCounts = useMemo(() => {
+    const c = {};
+    MOVE_TYPES.forEach(t => { c[t] = (typeStats[t] && typeStats[t].total) || 0; });
+    return c;
+  }, [typeStats]);
   useEffect(() => {
     setSelRow(null);
   }, [mgrF]);
@@ -2955,7 +3127,7 @@ function PageOB({
     };
     const cnt = typeCounts[t] || 0;
     const gCnt = gTmpl && gTmpl[t] && gTmpl[t].length || 0;
-    const isActive = typeF === t;
+    const isActive = typeF.indexOf(t) >= 0;
     return React.createElement("div", {
       key: t,
       className: "card",
@@ -2981,7 +3153,7 @@ function PageOB({
         color: ts2.clr,
         cursor: "pointer"
       },
-      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+      onClick: () => setTypeF(p => p.indexOf(t) >= 0 ? p.filter(x => x !== t) : p.concat([t]))
     }, t), React.createElement("button", {
       onClick: e => {
         e.stopPropagation();
@@ -3010,7 +3182,7 @@ function PageOB({
         color: ts2.clr,
         cursor: "pointer"
       },
-      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+      onClick: () => setTypeF(p => p.indexOf(t) >= 0 ? p.filter(x => x !== t) : p.concat([t]))
     }, cnt), React.createElement("div", {
       style: {
         display: "flex",
@@ -3024,7 +3196,7 @@ function PageOB({
         color: "var(--t3)",
         cursor: "pointer"
       },
-      onClick: () => setTypeF(p => p === t ? "ALL" : t)
+      onClick: () => setTypeF(p => p.indexOf(t) >= 0 ? p.filter(x => x !== t) : p.concat([t]))
     }, "\uAC74"), gCnt > 0 && React.createElement("div", {
       style: {
         fontSize: 9,
@@ -3033,7 +3205,37 @@ function PageOB({
         padding: "1px 5px",
         borderRadius: 8
       }
-    }, "공통 " + gCnt)));
+    }, "공통 " + gCnt)), React.createElement("div", {
+      style: {
+        marginTop: 7,
+        display: "flex",
+        gap: 5
+      }
+    }, React.createElement("div", {
+      style: {
+        flex: 1,
+        fontSize: 9,
+        fontWeight: 800,
+        textAlign: "center",
+        padding: "3px 0",
+        borderRadius: 6,
+        background: "#F0FDF4",
+        color: "#16A34A",
+        border: "1px solid #BBF7D0"
+      }
+    }, "완료 " + ((typeStats[t] && typeStats[t].done) || 0) + "건"), React.createElement("div", {
+      style: {
+        flex: 1,
+        fontSize: 9,
+        fontWeight: 800,
+        textAlign: "center",
+        padding: "3px 0",
+        borderRadius: 6,
+        background: "#FEF9C3",
+        color: "#92400E",
+        border: "1px solid #FDE68A"
+      }
+    }, "미완료 " + ((typeStats[t] && typeStats[t].undone) || 0) + "건")));
   })), apiStatus !== "ok" && React.createElement("div", {
     style: {
       padding: "8px 14px",
@@ -3071,43 +3273,43 @@ function PageOB({
       marginBottom: 12,
       flexWrap: "wrap"
     }
-  }, React.createElement("select", {
+  }, React.createElement(MultiSelect, {
+    label: "월", color: "#4F46E5", options: months, selected: monthF, onChange: setMonthF
+  }), React.createElement(MultiSelect, {
+    label: "작성자", color: "#0EA5E9", options: obWriters, selected: writerF, onChange: setWriterF
+  }), React.createElement(MultiSelect, {
+    label: "담당자", color: "#0EA5E9", options: managers, selected: mgrF, onChange: setMgrF
+  }), React.createElement(MultiSelect, {
+    label: "구분", color: "#8B5CF6", options: MOVE_TYPES, selected: typeF, onChange: setTypeF
+  }), React.createElement(MultiSelect, {
+    label: "사업부", color: "#059669", options: obDepts, selected: deptF, onChange: setDeptF
+  }), React.createElement("input", {
     className: "inp",
-    style: {
-      width: "auto",
-      fontSize: 11
-    },
-    value: monthF,
-    onChange: e => setMonthF(e.target.value)
-  }, React.createElement("option", {
-    value: "ALL"
-  }, "\uC6D4 \uC804\uCCB4"), months.map(m => React.createElement("option", {
-    key: m,
-    value: m
-  }, m))), React.createElement("div", {
-    className: "tab-bar"
-  }, React.createElement("button", {
-    className: "tab-btn" + (mgrF === "ALL" ? " active" : ""),
-    onClick: () => setMgrF("ALL")
-  }, "\uC804\uCCB4"), managers.map(m => {
-    const tm = (team || []).find(x => x.name === m);
-    return React.createElement("button", {
-      key: m,
-      className: "tab-btn" + (mgrF === m ? " active" : ""),
-      onClick: () => setMgrF(m),
-      style: mgrF === m && tm ? {
-        background: tm.color + "15",
-        borderColor: tm.color,
-        color: tm.color
-      } : {}
-    }, m);
-  })), React.createElement("button", {
+    style: { width: 80, fontSize: 11 },
+    placeholder: "사번",
+    value: empIdF,
+    onChange: e => setEmpIdF(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 90, fontSize: 11 },
+    placeholder: "대상자",
+    value: targetF,
+    onChange: e => setTargetF(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 130, fontSize: 11 },
+    placeholder: "내용 검색",
+    value: contentF,
+    onChange: e => setContentF(e.target.value)
+  }), React.createElement(MultiSelect, {
+    label: "1차검증", color: "#16A34A", options: ["완료", "미완료"], selected: v1F, onChange: setV1F
+  }), React.createElement(MultiSelect, {
+    label: "2차검증", color: "#16A34A", options: ["완료", "미완료"], selected: v2F, onChange: setV2F
+  }), React.createElement(MultiSelect, {
+    label: "최종완료", color: "#DC2626", options: ["완료", "미완료"], selected: finalF, onChange: setFinalF
+  }), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setMonthF("ALL");
-      setMgrF("ALL");
-      setTypeF("ALL");
-    }
+    onClick: resetOBFilters
   }, "\uCD08\uAE30\uD654"), React.createElement("div", {
     style: {
       flex: 1
@@ -3391,7 +3593,7 @@ function PageOB({
     })()));
   }))))), selRow && React.createElement(ChecklistPanel, {
     row: selRow,
-    managerName: mgrF === "ALL" ? String(selRow.manager || "") : mgrF,
+    managerName: mgrF.length === 1 ? mgrF[0] : String(selRow.manager || ""),
     onClose: () => {
       setSelRow(null);
       setClRefresh(p => p + 1);
@@ -4453,9 +4655,20 @@ function PageHistory({
 }) {
   const [vLoad, setVLoad] = useState({});
   const [showUrlEdit, setShowUrlEdit] = useState(false);
-  const [fMonth, setFMonth] = useState("ALL");
-  const [fMgr, setFMgr] = useState("ALL");
-  const [fRefl, setFRefl] = useState("ALL");
+  const [fMonth, setFMonth] = useState([]); // A열 급여반영월 (다중)
+  const [fMgr, setFMgr] = useState([]);     // C열 담당자 (다중)
+  const [fRefl, setFRefl] = useState([]);   // D열 반영/구분 (다중)
+  const [fWriter, setFWriter] = useState([]); // B열 작성자 (다중)
+  const [fDept, setFDept] = useState([]);     // E열 사업부 (다중)
+  const [fEmpId, setFEmpId] = useState("");      // F열 사번 (텍스트)
+  const [fTarget, setFTarget] = useState("");    // G열 대상자 (텍스트)
+  const [fContent, setFContent] = useState("");  // H열 내용 (텍스트 검색)
+  const [fV1, setFV1] = useState([]);         // K열 1차 검증 여부 (다중: 완료/미완료)
+  const [fV2, setFV2] = useState([]);         // L열 2차 검증 여부 (다중: 완료/미완료)
+  const resetFilters = () => {
+    setFMonth([]); setFMgr([]); setFRefl([]); setFWriter([]);
+    setFDept([]); setFEmpId(""); setFTarget(""); setFContent(""); setFV1([]); setFV2([]);
+  };
   const [showAdd, setShowAdd] = useState(false);
   const EMPTY = {
     reflectMonth: "",
@@ -4493,12 +4706,22 @@ function PageHistory({
   const months = useMemo(() => [...new Set((apiRows || []).map(r => String(r.reflectMonth || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const managers = useMemo(() => [...new Set((apiRows || []).map(r => String(r.manager || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const reflOpts = useMemo(() => [...new Set((apiRows || []).map(r => String(r.isReflected || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const writers = useMemo(() => [...new Set((apiRows || []).map(r => String(r.writer || "").trim()).filter(Boolean))].sort(), [apiRows]);
+  const depts = useMemo(() => [...new Set((apiRows || []).map(r => String(r.department || "").trim()).filter(Boolean))].sort(), [apiRows]);
   const filtered = useMemo(() => (apiRows || []).filter(r => {
-    if (fMonth !== "ALL" && String(r.reflectMonth || "").trim() !== fMonth) return false;
-    if (fMgr !== "ALL" && String(r.manager || "").trim() !== fMgr) return false;
-    if (fRefl !== "ALL" && String(r.isReflected || "").trim() !== fRefl) return false;
+    // 같은 카테고리 내 다중선택 = OR, 서로 다른 카테고리 = AND. 빈 배열 = 해당 필터 미적용(전체)
+    if (fMonth.length && fMonth.indexOf(String(r.reflectMonth || "").trim()) < 0) return false;   // A열
+    if (fWriter.length && fWriter.indexOf(String(r.writer || "").trim()) < 0) return false;       // B열
+    if (fMgr.length && fMgr.indexOf(String(r.manager || "").trim()) < 0) return false;            // C열
+    if (fRefl.length && fRefl.indexOf(String(r.isReflected || "").trim()) < 0) return false;      // D열
+    if (fDept.length && fDept.indexOf(String(r.department || "").trim()) < 0) return false;       // E열
+    if (fEmpId.trim() && String(r.employeeId || "").toLowerCase().indexOf(fEmpId.trim().toLowerCase()) < 0) return false; // F열
+    if (fTarget.trim() && String(r.targetName || "").toLowerCase().indexOf(fTarget.trim().toLowerCase()) < 0) return false; // G열
+    if (fContent.trim() && String(r.content || "").toLowerCase().indexOf(fContent.trim().toLowerCase()) < 0) return false;  // H열
+    if (fV1.length && fV1.indexOf(r.verify1Done ? "완료" : "미완료") < 0) return false;            // K열 1차 검증
+    if (fV2.length && fV2.indexOf(r.verify2Done ? "완료" : "미완료") < 0) return false;            // L열 2차 검증
     return true;
-  }), [apiRows, fMonth, fMgr, fRefl]);
+  }), [apiRows, fMonth, fWriter, fMgr, fRefl, fDept, fEmpId, fTarget, fContent, fV1, fV2]);
   async function postAction(body) {
     return fetch(apiUrl, {
       method: "POST",
@@ -4892,52 +5115,41 @@ function PageHistory({
       alignItems: "center",
       flexWrap: "wrap"
     }
-  }, React.createElement("select", {
+  }, React.createElement(MultiSelect, {
+    label: "월", color: "#4F46E5", options: months, selected: fMonth, onChange: setFMonth
+  }), React.createElement(MultiSelect, {
+    label: "작성자", color: "#0EA5E9", options: writers, selected: fWriter, onChange: setFWriter
+  }), React.createElement(MultiSelect, {
+    label: "담당자", color: "#0EA5E9", options: managers, selected: fMgr, onChange: setFMgr
+  }), React.createElement(MultiSelect, {
+    label: "구분", color: "#8B5CF6", options: reflOpts, selected: fRefl, onChange: setFRefl
+  }), React.createElement(MultiSelect, {
+    label: "사업부", color: "#059669", options: depts, selected: fDept, onChange: setFDept
+  }), React.createElement("input", {
     className: "inp",
-    style: {
-      width: "auto",
-      fontSize: 11
-    },
-    value: fMonth,
-    onChange: e => setFMonth(e.target.value)
-  }, React.createElement("option", {
-    value: "ALL"
-  }, "\uC6D4 \uC804\uCCB4"), months.map(m => React.createElement("option", {
-    key: m,
-    value: m
-  }, m))), React.createElement("select", {
+    style: { width: 84, fontSize: 11 },
+    placeholder: "사번",
+    value: fEmpId,
+    onChange: e => setFEmpId(e.target.value)
+  }), React.createElement("input", {
     className: "inp",
-    style: {
-      width: "auto",
-      fontSize: 11
-    },
-    value: fMgr,
-    onChange: e => setFMgr(e.target.value)
-  }, React.createElement("option", {
-    value: "ALL"
-  }, "\uB2F4\uB2F9\uC790 \uC804\uCCB4"), managers.map(m => React.createElement("option", {
-    key: m,
-    value: m
-  }, m))), React.createElement("select", {
+    style: { width: 90, fontSize: 11 },
+    placeholder: "대상자",
+    value: fTarget,
+    onChange: e => setFTarget(e.target.value)
+  }), React.createElement("input", {
     className: "inp",
-    style: {
-      width: "auto",
-      fontSize: 11
-    },
-    value: fRefl,
-    onChange: e => setFRefl(e.target.value)
-  }, React.createElement("option", {
-    value: "ALL"
-  }, "\uAD6C\uBD84 \uC804\uCCB4"), reflOpts.map(r => React.createElement("option", {
-    key: r,
-    value: r
-  }, r))), React.createElement("button", {
+    style: { width: 130, fontSize: 11 },
+    placeholder: "내용 검색",
+    value: fContent,
+    onChange: e => setFContent(e.target.value)
+  }), React.createElement(MultiSelect, {
+    label: "1차검증", color: "#16A34A", options: ["완료", "미완료"], selected: fV1, onChange: setFV1
+  }), React.createElement(MultiSelect, {
+    label: "2차검증", color: "#16A34A", options: ["완료", "미완료"], selected: fV2, onChange: setFV2
+  }), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setFMonth("ALL");
-      setFMgr("ALL");
-      setFRefl("ALL");
-    }
+    onClick: resetFilters
   }, "\uCD08\uAE30\uD654")), React.createElement("div", {
     style: {
       padding: "0 18px 16px"
@@ -5208,8 +5420,15 @@ function PageMemo({
   const [content, setContent] = useState("");
   const [remark, setRemark] = useState("");
   const [err, setErr] = useState("");
-  const [filterCat, setFilterCat] = useState("ALL");
+  const [filterCat, setFilterCat] = useState([]);   // 카테고리 (다중)
   const [filterDate, setFilterDate] = useState("");
+  const [fAuthor, setFAuthor] = useState([]);   // 작성자 (다중)
+  const [fContentQ, setFContentQ] = useState(""); // 업무 내용 검색
+  const [fRemarkQ, setFRemarkQ] = useState("");   // 비고 검색
+  const memoAuthors = useMemo(() => [...new Set((memos || []).map(m => String(m.author || "").trim()).filter(Boolean))].sort(), [memos]);
+  const resetMemoFilters = () => {
+    setFilterCat([]); setFilterDate(""); setFAuthor([]); setFContentQ(""); setFRemarkQ("");
+  };
   const fromCloud = useRef(false);
   useEffect(() => {
     setDate(selectedDate || todayStr);
@@ -5256,8 +5475,11 @@ function PageMemo({
     if (confirm("이 메모를 삭제할까요?")) setMemos(p => (p || []).filter(m => m.id !== id));
   }
   const filtered = (memos || []).filter(m => {
-    if (filterCat !== "ALL" && m.cat !== filterCat) return false;
+    if (filterCat.length && filterCat.indexOf(String(m.cat || "").trim()) < 0) return false;       // 카테고리(다중 OR)
     if (filterDate && m.date !== filterDate) return false;
+    if (fAuthor.length && fAuthor.indexOf(String(m.author || "").trim()) < 0) return false;        // 작성자(다중 OR)
+    if (fContentQ.trim() && String(m.content || "").toLowerCase().indexOf(fContentQ.trim().toLowerCase()) < 0) return false;
+    if (fRemarkQ.trim() && String(m.remark || "").toLowerCase().indexOf(fRemarkQ.trim().toLowerCase()) < 0) return false;
     return true;
   });
   const TH = {
@@ -5454,20 +5676,9 @@ function PageMemo({
     strokeWidth: "1.5",
     strokeLinecap: "round",
     strokeLinejoin: "round"
-  })), "\uC5D1\uC140 \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("select", {
-    className: "inp",
-    style: {
-      width: "auto",
-      fontSize: 11
-    },
-    value: filterCat,
-    onChange: e => setFilterCat(e.target.value)
-  }, React.createElement("option", {
-    value: "ALL"
-  }, "\uCE74\uD14C\uACE0\uB9AC \uC804\uCCB4"), MEMO_CATS.map(c => React.createElement("option", {
-    key: c,
-    value: c
-  }, c))), React.createElement("input", {
+  })), "\uC5D1\uC140 \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement(MultiSelect, {
+    label: "카테고리", color: "#8B5CF6", options: MEMO_CATS, selected: filterCat, onChange: setFilterCat
+  }), React.createElement("input", {
     type: "date",
     className: "inp",
     style: {
@@ -5477,12 +5688,23 @@ function PageMemo({
     value: filterDate,
     onChange: e => setFilterDate(e.target.value),
     title: "\uB0A0\uC9DC \uD544\uD130"
-  }), (filterCat !== "ALL" || filterDate) && React.createElement("button", {
+  }), React.createElement(MultiSelect, {
+    label: "작성자", color: "#0EA5E9", options: memoAuthors, selected: fAuthor, onChange: setFAuthor
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 140, fontSize: 11 },
+    placeholder: "업무 내용 검색",
+    value: fContentQ,
+    onChange: e => setFContentQ(e.target.value)
+  }), React.createElement("input", {
+    className: "inp",
+    style: { width: 110, fontSize: 11 },
+    placeholder: "비고 검색",
+    value: fRemarkQ,
+    onChange: e => setFRemarkQ(e.target.value)
+  }), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
-    onClick: () => {
-      setFilterCat("ALL");
-      setFilterDate("");
-    }
+    onClick: resetMemoFilters
   }, "\uCD08\uAE30\uD654"))), React.createElement("div", {
     className: "card-body",
     style: {
@@ -5798,15 +6020,47 @@ function asciiStorageName(kind, originalName) {
   if (!base) base = "file";
   return (roman + "_" + base + "_" + Date.now() + ext).replace(/_+/g, "_");
 }
-// 원본 파일 업로드 → Supabase Storage 버킷에 바이너리 직접 PUT(없으면 생성, 있으면 덮어쓰기)
-async function driveUploadFile(file, curYM, kind) {
+// 4대보험 원본 파일명 규칙: "[귀속6자리]_(종류)_[사업부].ext" (공백→_, 괄호·한글 그대로 유지)
+function insPrettyName(folder, kind, tag, ext) {
+  const cl = s => String(s == null ? "" : s).trim().replace(/[\/\\]/g, "_").replace(/\s+/g, "_");
+  return cl(folder) + "_(" + cl(kind) + ")_" + cl(tag) + (ext || "");
+}
+// 스토리지 Key: 확장자 직전에 _타임스탬프(Date.now())를 붙여 고유화 → 덮어쓰기/이름 꼬임 방지
+function insStampedKey(folder, kind, tag, ext, stamp) {
+  return insPrettyName(folder, kind, tag, "") + "_" + stamp + (ext || "");
+}
+// 목록 표시용: Key 끝의 _타임스탬프(10자리+ 숫자) 제거 → 규칙 파일명만 깔끔히 노출
+function insStripStamp(name) {
+  return String(name || "").replace(/_(\d{10,})(\.[^.]*)?$/, "$2");
+}
+// 원본 파일 업로드 → Supabase Storage 버킷에 바이너리 직접 PUT
+//  tag 지정 시 새 규칙으로 저장: 표시명 "귀속6_(종류)_사업부.ext", 실제 Key는 "..._타임스탬프.ext"(고유)
+//  같은 슬롯(귀속·종류·사업부) 기존 파일은 업로드 전 모두 정리 → 최신 1개만 유지
+async function driveUploadFile(file, curYM, kind, tag) {
   const cfg = SheetDB.storage;
   if (!cfg || !cfg.enabled || !cfg.url || !cfg.key) {
     throw new Error("Supabase Storage 설정이 없습니다. (SUPABASE_URL/KEY 확인)");
   }
-  const folder = ymFolder(curYM);                       // 2026.05 → 202605
-  const taggedName = (kind ? "[" + kind + "] " : "") + file.name;
-  const cleanedFileName = safeStorageName(taggedName);  // 괄호/공백 제거(한글 유지)
+  const folder = ymFolder(curYM);                       // 2026.06 → 202606
+  const on = String(file.name || "");
+  const dotI = on.lastIndexOf(".");
+  const ext = dotI > 0 ? on.slice(dotI) : "";           // 확장자(.xls/.xlsx)
+  let storageKey;
+  if (tag) {
+    storageKey = insStampedKey(folder, kind, tag, ext, Date.now()); // 202606_(건강보험)_MT_<ts>.xls
+    // 동일 슬롯(귀속·종류·사업부) 기존 파일 정리(확장자·타임스탬프 무관) → 최신 1개만 유지
+    try {
+      const slot = insPrettyName(folder, kind, tag, "");            // 202606_(건강보험)_MT
+      const list = await driveFetchFileList(curYM);
+      for (const it of list || []) {
+        const nm = String(it.name || "");
+        const baseNoExt = insStripStamp(nm).replace(/\.[^.]*$/, "");
+        if (baseNoExt === slot) await driveDeleteFile(curYM, nm).catch(() => {});
+      }
+    } catch (_) {}
+  } else {
+    storageKey = safeStorageName((kind ? "[" + kind + "] " : "") + file.name);
+  }
   const headers = {
     "Authorization": "Bearer " + cfg.key,
     "apikey": cfg.key,
@@ -5814,15 +6068,15 @@ async function driveUploadFile(file, curYM, kind) {
     "Content-Type": file.type || "application/octet-stream",
     "Cache-Control": "3600"
   };
-  // 파일명 전체를 encodeURIComponent 로 감싸 유니코드(한글)·특수문자를 안전한 주소로 전송
+  // 파일명 전체를 encodeURIComponent 로 감싸 유니코드(한글)·괄호·특수문자를 안전한 주소로 전송
   const putOnce = fname => fetch(
     cfg.url + "/storage/v1/object/" + cfg.bucket + "/" + folder + "/" + encodeURIComponent(fname),
     { method: "POST", headers: headers, body: file }
   );
-  let res = await putOnce(cleanedFileName);
-  // 일부 Supabase 환경은 키에 한글(비ASCII)을 거부(InvalidKey 400) → ASCII 전용 이름으로 자동 재시도
+  let res = await putOnce(storageKey);
+  // 일부 Supabase 환경은 키에 한글/괄호(비ASCII) 거부(InvalidKey 400) → ASCII 전용 이름으로 자동 재시도
   if (!res.ok && res.status === 400) {
-    const asciiName = asciiStorageName(kind, file.name);
+    const asciiName = asciiStorageName(kind, tag ? tag + "_" + folder + ext : file.name);
     const res2 = await putOnce(asciiName);
     if (res2.ok) return { ok: true, fileName: asciiName };
     res = res2;
@@ -5832,7 +6086,7 @@ async function driveUploadFile(file, curYM, kind) {
     try { detail = await res.text(); } catch (_) {}
     throw new Error("업로드 실패(" + res.status + ") " + detail);
   }
-  return { ok: true, fileName: cleanedFileName };
+  return { ok: true, fileName: storageKey };
 }
 function driveFileKind(name) {
   const n = String(name || "");
@@ -5868,6 +6122,7 @@ async function driveFetchFileList(curYM) {
       return {
         id: it.id || folder + "/" + fileName,
         name: fileName,
+        displayName: insStripStamp(fileName), // 목록 표시용: _타임스탬프 제거한 규칙 파일명
         url: publicUrl,
         downloadUrl: publicUrl,
         createdAt: it.created_at || it.updated_at || (it.metadata && it.metadata.lastModified) || null
@@ -5875,6 +6130,21 @@ async function driveFetchFileList(curYM) {
     });
   } catch (e) {
     return [];
+  }
+}
+// 원본 파일 삭제 → Supabase Storage DELETE
+async function driveDeleteFile(curYM, fileName) {
+  const cfg = SheetDB.storage;
+  if (!cfg || !cfg.enabled || !cfg.url || !cfg.key) return false;
+  const folder = ymFolder(curYM);
+  try {
+    const res = await fetch(cfg.url + "/storage/v1/object/" + cfg.bucket + "/" + folder + "/" + encodeURIComponent(fileName), {
+      method: "DELETE",
+      headers: { "Authorization": "Bearer " + cfg.key, "apikey": cfg.key }
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
   }
 }
 const INS_LS_PREFIX = "hr_shine_4ins_";
@@ -5925,11 +6195,19 @@ function detectInsType(data) {
   }
   return pensionScore > healthScore ? "국민연금" : "건강보험";
 }
+// 사업부 라벨 정규화: 빈칸/— → '미분류' (드롭다운·삭제 필터 공통 사용)
+function insDeptLabel(d) {
+  const v = String(d == null ? "" : d).trim();
+  return !v || v === "—" || v === "-" || v === "ー" ? "미분류" : v;
+}
 function parsePubHealth(data) {
   const rrnMap = {};
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
     if (!r || !r[6] || String(r[6]).trim() === "") continue;
+    const _nm = String(r[6]).replace(/\s/g, "");
+    if (_nm === "총계" || _nm === "합계" || _nm === "소계") continue; // 합산행 제외
+    if (String(r[8] || "").trim() === "사업부") continue;            // 고스트 '사업부' 행 제외
     const rk = rrnDigits(r[7]);
     const key = rk || "_" + String(r[6]).trim() + "_" + i;
     if (rrnMap[key]) {
@@ -5960,6 +6238,9 @@ function parsePubPension(data) {
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
     if (!r || !r[2] || String(r[2]).trim() === "") continue;
+    const _nm = String(r[2]).replace(/\s/g, "");
+    if (_nm === "총계" || _nm === "합계" || _nm === "소계") continue; // 합산행 제외
+    if (String(r[4] || "").trim() === "사업부") continue;            // 고스트 '사업부' 행 제외
     const rk = rrnDigits(r[3]);
     const key = rk || "_" + String(r[2]).trim() + "_" + i;
     if (rrnMap[key]) {
@@ -6010,6 +6291,9 @@ function parsePay(data) {
     const r = data[i];
     const name = r ? String(r[cName] || "").trim() : "";
     if (!name) continue;
+    const nn = name.replace(/\s/g, "");
+    if (nn === "총계" || nn === "합계" || nn === "소계") continue; // 총계/합계/소계 합산행 제외
+    if (String(r[cDept] || "").trim() === "사업부") continue;     // 타이틀 누락된 '사업부' 고스트 행 제외
     const rk = rrnDigits(r[cRrn]);
     const key = rk || "_" + name + "_" + i;
     const row = {
@@ -6131,6 +6415,8 @@ function Page4Insurance({
   const [error, setError] = useState("");
   const [deptView, setDeptView] = useState("전체");
   const [deptDeleteSel, setDeptDeleteSel] = useState("");
+  const [pubScope, setPubScope] = useState("CW");  // 고지서 구분: CW(DW·MS·SP·ST·PA) / MT
+  const [payDept, setPayDept] = useState("");       // 급여대장 업로드 대상 사업부
   const [rawPub, setRawPub] = useState([]);
   const [rawPay, setRawPay] = useState([]);
   const [driveFiles, setDriveFiles] = useState([]);
@@ -6165,6 +6451,7 @@ function Page4Insurance({
   const driveQueue = useRef(Promise.resolve());
   const commitChain = useRef(Promise.resolve());
   const commitPending = useRef(0);
+  const cmpScrollRef = useRef(null); // [상세 비교] 가로 스크롤 컨테이너 ref (휠 가로 스크롤용)
   function insKeyOf(r) {
     return rrnDigits(r.rrn) || "_" + (r.name || "") + "_" + (r.empId || "") + "_" + (r.dept || "");
   }
@@ -6300,11 +6587,11 @@ function Page4Insurance({
     };
     reader.readAsArrayBuffer(file);
   }
-  function uploadToDrive(file, kind) {
+  function uploadToDrive(file, kind, tag) {
     if (!(SheetDB.storage && SheetDB.storage.enabled)) return; // Supabase Storage 미설정 시 스킵
     setDriveUploading(true);
     setDriveStatus("uploading");
-    driveQueue.current = driveQueue.current.then(() => driveUploadFile(file, curYM, kind)).then(() => {
+    driveQueue.current = driveQueue.current.then(() => driveUploadFile(file, curYM, kind, tag)).then(() => {
       setDriveStatus("done");
       setDriveErr("");
       return driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
@@ -6393,7 +6680,7 @@ function Page4Insurance({
           custom: liveRef.current.custom,
           checked: liveRef.current.checked
         }).finally(() => {
-          uploadToDrive(f, insType);
+          uploadToDrive(f, insType, pubScope);
         });
       } catch (ex) {
         setError("공단 고지서 처리 실패: " + (ex && ex.message || ex));
@@ -6406,6 +6693,11 @@ function Page4Insurance({
   function handlePay(e) {
     const f = e.target.files[0];
     if (!f) return;
+    if (!payDept) {
+      alert("급여대장을 올릴 사업부를 먼저 선택해주세요. (DW · MS · SP · ST · PA · MT)");
+      e.target.value = "";
+      return;
+    }
     isLoadingRef.current = true;
     setLoading("급여대장 처리 중...");
     setError("");
@@ -6422,7 +6714,7 @@ function Page4Insurance({
           setError("급여대장에서 직원 행을 인식하지 못했습니다. 파일 양식(성명/주민번호/금액 열)을 확인해주세요.");
           setLoading("");
           if (commitPending.current === 0) isLoadingRef.current = false;
-          uploadToDrive(f, "급여대장");
+          uploadToDrive(f, "급여대장", payDept);
           return;
         }
         const newDepts = new Set(newPayRows.filter(r => (r.dept || "").trim()).map(r => r.dept.trim()));
@@ -6446,7 +6738,7 @@ function Page4Insurance({
           custom: liveRef.current.custom,
           checked: liveRef.current.checked
         }).finally(() => {
-          uploadToDrive(f, "급여대장");
+          uploadToDrive(f, "급여대장", payDept);
         });
       } catch (ex) {
         setError("급여대장 처리 실패: " + (ex && ex.message || ex));
@@ -6474,8 +6766,8 @@ function Page4Insurance({
       return;
     }
     if (!confirm(curYM + " 데이터에서 " + deptDeleteSel + " 사업부를 삭제할까요?")) return;
-    const nextPub = (liveRef.current.pub || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
-    const nextPay = (liveRef.current.pay || []).filter(r => (r.dept || "미분류") !== deptDeleteSel);
+    const nextPub = (liveRef.current.pub || []).filter(r => insDeptLabel(r.dept) !== deptDeleteSel);
+    const nextPay = (liveRef.current.pay || []).filter(r => insDeptLabel(r.dept) !== deptDeleteSel);
     commit({
       pub: nextPub,
       pay: nextPay,
@@ -6486,6 +6778,27 @@ function Page4Insurance({
       isLoadingRef.current = false;
     });
     setDeptDeleteSel("");
+  }
+  // [상세 비교] 개별 행 삭제: 해당 사람(주민번호 우선, 없으면 이름)을 pub/pay 에서 제거 후 Supabase 즉시 반영
+  function deleteRowById(row) {
+    if (!confirm("이 행 데이터를 삭제할까요?")) return;
+    const rk = rrnDigits(row && row.rrn);
+    const target = String(row && row.name || "").trim();
+    const matchPerson = r => {
+      if (rk) return rrnDigits(r && r.rrn) === rk;
+      return String(r && r.name || "").trim() === target && !rrnDigits(r && r.rrn);
+    };
+    const nextPub = (liveRef.current.pub || []).filter(r => !matchPerson(r));
+    const nextPay = (liveRef.current.pay || []).filter(r => !matchPerson(r));
+    commit({
+      pub: nextPub,
+      pay: nextPay,
+      reasons: liveRef.current.reasons,
+      custom: liveRef.current.custom,
+      checked: liveRef.current.checked
+    }).catch(() => {
+      isLoadingRef.current = false;
+    });
   }
   function downloadSample(type) {
     let headers, sampleRow, sheetName;
@@ -6686,6 +6999,24 @@ function Page4Insurance({
   }, fmtKRW(v));
   const hasHealth = merged.some(r => r.insType === "건강보험" || r.health > 0 || r.care > 0 || r.pay && ((r.pay.health || 0) > 0 || (r.pay.care || 0) > 0));
   const hasPension = merged.some(r => r.insType === "국민연금" || r.pension > 0 || r.pay && (r.pay.pension || 0) > 0);
+  // [상세 비교] 마우스 휠(또는 Shift+휠) → 가로 스크롤. React onWheel은 passive라 preventDefault가 막힐 수 있어 네이티브 리스너로 등록.
+  useEffect(() => {
+    const el = cmpScrollRef.current;
+    if (!el) return;
+    const onWheel = e => {
+      if (el.scrollWidth <= el.clientWidth + 1 || e.deltaY === 0) return; // 가로 오버플로 없으면 기본 동작
+      const atLeft = el.scrollLeft <= 0;
+      const atRight = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+      // 가로 끝에 도달한 채 그 방향으로 더 굴리면 세로 스크롤을 막지 않음
+      if (e.deltaY < 0 && atLeft || e.deltaY > 0 && atRight) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, {
+      passive: false
+    });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [viewRows.length, hasHealth, hasPension]);
   function downloadVerificationExcel() {
     const dept = deptView === "전체" ? "전체" : deptView;
     const rows = viewRows;
@@ -6935,7 +7266,7 @@ function Page4Insurance({
           textOverflow: "ellipsis",
           whiteSpace: "nowrap"
         }
-      }, f.name), React.createElement("div", {
+      }, f.displayName || f.name), React.createElement("div", {
         style: {
           fontSize: 10,
           color: "#16A34A",
@@ -6971,7 +7302,28 @@ function Page4Insurance({
           textDecoration: "none",
           whiteSpace: "nowrap"
         }
-      }, "\uC5F4\uAE30")) : React.createElement("div", {
+      }, "\uC5F4\uAE30"), React.createElement("button", {
+        onClick: async () => {
+          if (!confirm("이 원본 파일을 스토리지에서 삭제할까요?")) return;
+          const ok = await driveDeleteFile(curYM, f.name);
+          if (ok) {
+            driveFetchFileList(curYM).then(files => setDriveFiles(files)).catch(() => {});
+          } else {
+            alert("삭제 실패. 버킷 권한(RLS delete) 또는 네트워크를 확인하세요.");
+          }
+        },
+        style: {
+          fontSize: 10,
+          padding: "4px 10px",
+          borderRadius: 7,
+          border: "1px solid #FCA5A5",
+          background: "#FEF2F2",
+          color: "#DC2626",
+          fontWeight: 600,
+          cursor: "pointer",
+          whiteSpace: "nowrap"
+        }
+      }, "\uC0AD\uC81C")) : React.createElement("div", {
         style: {
           flex: 1,
           fontSize: 11,
@@ -7043,7 +7395,7 @@ function Page4Insurance({
     }
   }, React.createElement("option", {
     value: ""
-  }, "\uC0AC\uC5C5\uBD80 \uC120\uD0DD"), [...new Set(rawPub.map(r => r.dept || "미분류"))].sort().map(d => React.createElement("option", {
+  }, "\uC0AC\uC5C5\uBD80 \uC120\uD0DD"), [...new Set([...(rawPub || []), ...(rawPay || [])].map(r => insDeptLabel(r.dept)))].sort().map(d => React.createElement("option", {
     key: d,
     value: d
   }, d))), React.createElement("button", {
@@ -7067,8 +7419,27 @@ function Page4Insurance({
       gridTemplateColumns: "1fr 1fr",
       gap: 12
     }
-  }, [["공단 고지서", handlePub, "#0EA5E9", "#E0F2FE", rawPub.length], ["회사 급여대장", handlePay, "#8B5CF6", "#F5F3FF", rawPay.length]].map(([label, handler, clr, bg, cnt]) => React.createElement("label", {
+  }, [["공단 고지서", handlePub, "#0EA5E9", "#E0F2FE", rawPub.length], ["회사 급여대장", handlePay, "#8B5CF6", "#F5F3FF", rawPay.length]].map(([label, handler, clr, bg, cnt]) => React.createElement("div", {
     key: label,
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 8
+    }
+  }, label === "공단 고지서" ? React.createElement("div", {
+    style: { display: "flex", gap: 6, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }
+  }, React.createElement("span", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 600 } }, "구분"), ["CW", "MT"].map(s => React.createElement("button", {
+    key: s,
+    type: "button",
+    onClick: () => setPubScope(s),
+    style: { fontSize: 10, fontWeight: 700, padding: "3px 12px", borderRadius: 8, cursor: "pointer", border: "1px solid " + (pubScope === s ? "#0EA5E9" : "var(--border2)"), background: pubScope === s ? "#0EA5E9" : "#fff", color: pubScope === s ? "#fff" : "var(--t2)" }
+  }, s)), React.createElement("span", { style: { fontSize: 9, color: "var(--t3)" } }, pubScope === "CW" ? "(DW·MS·SP·ST·PA)" : "(MT)")) : React.createElement("div", {
+    style: { display: "flex", gap: 6, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }
+  }, React.createElement("span", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 600 } }, "사업부"), React.createElement("select", {
+    value: payDept,
+    onChange: e => setPayDept(e.target.value),
+    style: { fontSize: 11, padding: "4px 10px", border: "1px solid " + (payDept ? "#8B5CF6" : "#FCA5A5"), borderRadius: 8, background: "#fff", fontFamily: "inherit", color: "var(--text)", outline: "none", fontWeight: 600 }
+  }, React.createElement("option", { value: "" }, "사업부 선택"), ["DW", "MS", "SP", "ST", "PA", "MT"].map(d => React.createElement("option", { key: d, value: d }, d))), payDept && React.createElement("span", { style: { fontSize: 9, color: "#8B5CF6", fontWeight: 700 } }, "[" + payDept + "] 최신본 유지")), React.createElement("label", {
     style: {
       display: "flex",
       flexDirection: "column",
@@ -7122,14 +7493,30 @@ function Page4Insurance({
       fontSize: 10,
       color: "var(--t3)"
     }
-  }, cnt > 0 ? "재업로드 가능" : "(.xlsx, .xls)"), React.createElement("input", {
+  }, cnt > 0 ? "재업로드 가능" : "(.xlsx, .xls)"), label === "회사 급여대장" && React.createElement("div", {
+    style: {
+      marginTop: 4,
+      width: "100%",
+      fontSize: 9.5,
+      lineHeight: 1.6,
+      color: "#1D4ED8",
+      background: "#EFF6FF",
+      border: "1px solid #BFDBFE",
+      borderRadius: 8,
+      padding: "7px 9px",
+      textAlign: "left",
+      fontWeight: 600
+    }
+  }, React.createElement("span", {
+    style: { color: "#2563EB", fontWeight: 800 }
+  }, "※ 급여대장 필수 열 순서"), React.createElement("br", null), "A열 귀속년월 | B열 사번 | C열 이름 | D열 주민번호 | E열 국민연금 | F열 국민연금정산 | G열 건강보험 | H열 건강보험정산 | I열 요양보험 | J열 요양보험정산 | K열 사업부"), React.createElement("input", {
     type: "file",
     accept: ".xlsx,.xls",
     style: {
       display: "none"
     },
     onChange: handler
-  })))), loading && React.createElement("div", {
+  }))))), loading && React.createElement("div", {
     style: {
       textAlign: "center",
       padding: "10px",
@@ -7192,77 +7579,7 @@ function Page4Insurance({
     strokeWidth: "1.5",
     strokeLinecap: "round",
     strokeLinejoin: "round"
-  })), type + " 양식"))), hasData && rawPub.length > 0 && React.createElement("div", {
-    style: {
-      marginTop: 6,
-      paddingTop: 10,
-      borderTop: "1px solid var(--border)",
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      flexWrap: "wrap"
-    }
-  }, React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      color: "var(--sky-deep)"
-    }
-  }, "\uC5C5\uB85C\uB4DC \uC6D0\uBCF8 \uB2E4\uC6B4\uB85C\uB4DC:"), React.createElement("button", {
-    onClick: downloadUploadedHealthGovExcel,
-    style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 5,
-      fontSize: 10,
-      padding: "5px 12px",
-      borderRadius: 7,
-      border: "1px solid #0EA5E940",
-      background: "#E0F2FE",
-      color: "#0369A1",
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit"
-    }
-  }, React.createElement("svg", {
-    width: "12",
-    height: "12",
-    viewBox: "0 0 14 14",
-    fill: "none"
-  }, React.createElement("path", {
-    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
-    stroke: "currentColor",
-    strokeWidth: "1.5",
-    strokeLinecap: "round",
-    strokeLinejoin: "round"
-  })), "\uAC74\uAC15 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC"), React.createElement("button", {
-    onClick: downloadUploadedPensionGovExcel,
-    style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 5,
-      fontSize: 10,
-      padding: "5px 12px",
-      borderRadius: 7,
-      border: "1px solid #8B5CF640",
-      background: "#F5F3FF",
-      color: "#6D28D9",
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit"
-    }
-  }, React.createElement("svg", {
-    width: "12",
-    height: "12",
-    viewBox: "0 0 14 14",
-    fill: "none"
-  }, React.createElement("path", {
-    d: "M7 2v7M7 9l-3-3M7 9l3-3M2 12h10",
-    stroke: "currentColor",
-    strokeWidth: "1.5",
-    strokeLinecap: "round",
-    strokeLinejoin: "round"
-  })), "\uC5F0\uAE08 \uACE0\uC9C0\uC11C \uB2E4\uC6B4\uB85C\uB4DC")))), hasData && React.createElement("div", {
+  })), type + " 양식"))))), hasData && React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "repeat(4,1fr)",
@@ -7390,8 +7707,13 @@ function Page4Insurance({
     strokeLinecap: "round",
     strokeLinejoin: "round"
   })), (deptView === "전체" ? "전체 사업부" : "[" + deptView + "]") + " 엑셀 다운로드"))), React.createElement("div", {
+    ref: cmpScrollRef,
     style: {
-      overflowX: "auto"
+      maxHeight: 600,
+      overflow: "auto",
+      overscrollBehaviorX: "contain",
+      border: "1px solid var(--border2)",
+      borderRadius: 8
     }
   }, React.createElement("table", {
     className: "xtbl",
@@ -7506,7 +7828,13 @@ function Page4Insurance({
       ...TH(),
       minWidth: 160
     }
-  }, "\uC0AC\uC720"))), React.createElement("tbody", null, viewRows.map(row => {
+  }, "\uC0AC\uC720"), React.createElement("th", {
+    style: {
+      ...TH(),
+      minWidth: 44,
+      textAlign: "center"
+    }
+  }, "\uC0AD\uC81C"))), React.createElement("tbody", null, viewRows.map(row => {
     const isDone = !!checked[row.id];
     const rowBg = row.autoOk ? "#F0FDF4" : isDone ? "#F0FDF4" : row.mismatch ? "rgba(254,226,226,.45)" : "#fff";
     const r = reasons[row.id] || "";
@@ -7636,7 +7964,28 @@ function Page4Insurance({
         fontWeight: 700,
         whiteSpace: "nowrap"
       }
-    }, row.autoOk ? "자동완료" : "정상"))));
+    }, row.autoOk ? "자동완료" : "정상"))), React.createElement("td", {
+      style: {
+        padding: "7px 8px",
+        borderBottom: "1px solid #E8EEF5",
+        textAlign: "center"
+      }
+    }, React.createElement("button", {
+      onClick: () => deleteRowById(row),
+      title: "이 행 삭제",
+      style: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        border: "1px solid #FCA5A5",
+        background: "#FEF2F2",
+        color: "#DC2626",
+        cursor: "pointer",
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1
+      }
+    }, "\u2715")));
   }))))), !hasData && React.createElement("div", {
     style: {
       textAlign: "center",
@@ -7740,6 +8089,149 @@ class ErrorBoundary extends React.Component {
     }
     return this.props.children;
   }
+}
+const TRANSFER_DEPTS = ["DW", "MS", "PA", "SP", "ST", "MT"];
+const TRANSFER_BANKS = ["국민은행", "신한은행", "우리은행", "하나은행", "농협은행", "기업은행", "SC제일은행", "카카오뱅크"];
+// 이체 내역 로드/저장: hr_store 의 "transfers" 컬렉션(배열)에 믹스인 — 다른 탭 데이터와 독립
+function loadTransfers() {
+  const t = SheetDB.get("transfers");
+  return Array.isArray(t) ? t : [];
+}
+function wonComma(v) {
+  const n = Number(v);
+  return isNaN(n) ? "0" : n.toLocaleString("ko-KR");
+}
+function PageTransfer({ cloudRev, adminName }) {
+  const [rows, setRows] = useState(() => loadTransfers());
+  const [monthF, setMonthF] = useState([]);     // 급여반영월 다중 선택 필터
+  const [editingId, setEditingId] = useState(null);
+  const fromCloud = useRef(false);
+  const now = new Date();
+  const defaultYM = now.getFullYear() + "." + String(now.getMonth() + 1).padStart(2, "0");
+  // 저장: pushNow 로 즉시 영구 저장(새로고침 후에도 유지)
+  const persist = next => {
+    fromCloud.current = false;
+    setRows(next);
+    SheetDB.pushNow("transfers", next);
+  };
+  // cloudRev(원격 변경) 시 서버 최신본 재반영
+  useSkipFirstEffect(() => {
+    const fresh = loadTransfers();
+    setRows(prev => {
+      if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+      fromCloud.current = true;
+      return fresh;
+    });
+  }, [cloudRev]);
+  const months = useMemo(() => [...new Set(rows.map(r => String(r.ym || "").trim()).filter(Boolean))].sort(), [rows]);
+  const filtered = useMemo(() => rows.filter(r => !monthF.length || monthF.indexOf(String(r.ym || "").trim()) >= 0), [rows, monthF]);
+  const sumDept = new Set(filtered.map(r => String(r.dept || "").trim()).filter(Boolean)).size;
+  const sumCount = filtered.reduce((a, r) => a + (Number(r.count) || 0), 0);
+  const sumAmount = filtered.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+  function addRow() {
+    const nr = { id: uid(), ym: monthF.length === 1 ? monthF[0] : defaultYM, dept: "", count: 0, amount: 0, date: todayStr, bank: "", checked: false, manager: adminName || "", appr1: "김윤구", appr2: "", createdAt: nowIso() };
+    persist([nr, ...rows]);
+    setEditingId(nr.id);
+  }
+  function updateRow(id, patch) {
+    persist(rows.map(r => r.id === id ? { ...r, ...patch } : r));
+  }
+  function deleteRow(id) {
+    if (confirm("이 이체 내역을 삭제할까요?")) persist(rows.filter(r => r.id !== id));
+  }
+  const TD = { padding: "6px 8px", borderBottom: "1px solid #E8EEF5", fontSize: 11.5, whiteSpace: "nowrap", color: "var(--text)", textAlign: "center", verticalAlign: "middle" };
+  const IN = { width: "100%", fontSize: 11, padding: "4px 6px", border: "1px solid var(--border2)", borderRadius: 6, fontFamily: "inherit", boxSizing: "border-box", textAlign: "center" };
+  const TH = { background: "var(--sky-d)", color: "#fff", padding: "7px 8px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", textAlign: "center", borderRight: "1px solid rgba(255,255,255,.15)" };
+  // 결재 토글 버튼
+  const apprBtn = (r, key) => {
+    const ok = r[key] === "승인";
+    return React.createElement("button", {
+      type: "button",
+      onClick: () => updateRow(r.id, { [key]: ok ? "대기" : "승인" }),
+      style: { fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", border: "1px solid " + (ok ? "#16A34A" : "#FCD34D"), background: ok ? "#16A34A" : "#FEF9C3", color: ok ? "#fff" : "#92400E" }
+    }, ok ? "승인" : "대기");
+  };
+  // 요약 스탯 카드
+  const statCard = (label, value, clr, sub) => React.createElement("div", {
+    style: { flex: 1, minWidth: 160, background: "#fff", border: "1px solid var(--border2)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--sh)", borderTop: "3px solid " + clr }
+  }, React.createElement("div", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 600, marginBottom: 4 } }, label),
+    React.createElement("div", { style: { fontSize: 22, fontWeight: 800, color: clr } }, value),
+    sub ? React.createElement("div", { style: { fontSize: 10, color: "var(--t3)", marginTop: 2 } }, sub) : null);
+  return React.createElement("div", { className: "fadein" },
+    // 상단 툴바
+    React.createElement("div", {
+      style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }
+    }, React.createElement(MultiSelect, { label: "급여반영월", color: "#4F46E5", options: months, selected: monthF, onChange: setMonthF }),
+      React.createElement("button", { className: "btn btn-primary btn-sm", onClick: addRow }, "+ 행 추가"),
+      React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: () => setMonthF([]) }, "초기화"),
+      React.createElement("div", { style: { flex: 1 } }),
+      React.createElement("div", { style: { fontSize: 11, color: "var(--t3)" } }, "총 " + filtered.length + "건")),
+    // 요약 카드
+    React.createElement("div", {
+      style: { display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }
+    }, statCard("총 이체 사업부 수", sumDept + "개", "#0EA5E9", "선택 월 기준"),
+      statCard("총 출금건수 합계", wonComma(sumCount) + "건", "#8B5CF6", "인원수 합산"),
+      statCard("총 이체 금액 합계", "₩ " + wonComma(sumAmount), "#059669", "선택 월 합계")),
+    // 데이터 테이블
+    React.createElement("div", { className: "card", style: { padding: 0 } },
+      React.createElement("div", { className: "xwrap", style: { overflowX: "auto", borderRadius: 12 } },
+        React.createElement("table", { className: "xtbl", style: { minWidth: 1180 } },
+          React.createElement("thead", null, React.createElement("tr", null,
+            ["급여반영월", "사업부", "출금건수", "금액(원)", "이체일자", "출금은행", "확인", "담당자", "1차 결재자", "2차 결재자", "관리"].map(h => React.createElement("th", { key: h, style: TH }, h)))),
+          React.createElement("tbody", null, filtered.length === 0
+            ? React.createElement("tr", null, React.createElement("td", { colSpan: 11, style: { ...TD, padding: "28px 8px", color: "var(--t3)" } }, "이체 내역이 없습니다. [+ 행 추가]로 등록하세요."))
+            : filtered.map(r => {
+              const ed = editingId === r.id;
+              return React.createElement("tr", { key: r.id, style: r.checked ? { background: "#F0FDF4" } : null },
+                // 급여반영월
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement("input", { style: { ...IN, width: 80 }, value: r.ym || "", placeholder: "2026.06", onChange: e => updateRow(r.id, { ym: e.target.value }) })
+                  : (r.ym || "—")),
+                // 사업부 (직접 작성 가능 + 추천 목록)
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement(React.Fragment, null, React.createElement("input", { style: { ...IN, width: 84, fontWeight: 700 }, list: "transfer-depts", value: r.dept || "", placeholder: "사업부", onChange: e => updateRow(r.id, { dept: e.target.value }) }),
+                    React.createElement("datalist", { id: "transfer-depts" }, TRANSFER_DEPTS.map(d => React.createElement("option", { key: d, value: d }))))
+                  : React.createElement("span", { style: { fontWeight: 700 } }, r.dept || "—")),
+                // 출금건수
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement("input", { type: "number", min: 0, style: { ...IN, width: 64 }, value: r.count != null ? r.count : 0, onChange: e => updateRow(r.id, { count: Number(e.target.value) || 0 }) })
+                  : wonComma(r.count) + "건"),
+                // 금액 (콤마)
+                React.createElement("td", { style: { ...TD, textAlign: "right", fontFamily: "'DM Mono',monospace" } }, ed
+                  ? React.createElement("input", { style: { ...IN, width: 116, textAlign: "right" }, value: wonComma(r.amount), onChange: e => updateRow(r.id, { amount: Number(String(e.target.value).replace(/[^0-9]/g, "")) || 0 }) })
+                  : "₩ " + wonComma(r.amount)),
+                // 이체일자
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement("input", { type: "date", style: { ...IN, width: 130 }, value: r.date || "", onChange: e => updateRow(r.id, { date: e.target.value }) })
+                  : (r.date || "—")),
+                // 출금은행
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement(React.Fragment, null, React.createElement("input", { style: { ...IN, width: 100 }, list: "transfer-banks", value: r.bank || "", placeholder: "은행", onChange: e => updateRow(r.id, { bank: e.target.value }) }),
+                    React.createElement("datalist", { id: "transfer-banks" }, TRANSFER_BANKS.map(b => React.createElement("option", { key: b, value: b }))))
+                  : (r.bank || "—")),
+                // 확인 체크박스(즉시 저장)
+                React.createElement("td", { style: TD }, React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer" } },
+                  React.createElement("input", { type: "checkbox", checked: !!r.checked, onChange: e => updateRow(r.id, { checked: e.target.checked }), style: { width: 15, height: 15, accentColor: "#16A34A", cursor: "pointer" } }),
+                  r.checked ? React.createElement("span", { style: { fontSize: 9.5, color: "#16A34A", fontWeight: 700 } }, "확인완료") : null)),
+                // 담당자
+                React.createElement("td", { style: TD }, ed
+                  ? React.createElement("input", { style: { ...IN, width: 80 }, value: r.manager || "", placeholder: "이름", onChange: e => updateRow(r.id, { manager: e.target.value }) })
+                  : (r.manager || "—")),
+                // 1차 결재자 (언제든 수정 가능, 기본 김윤구)
+                React.createElement("td", { style: TD }, React.createElement(React.Fragment, null,
+                  React.createElement("input", { style: { ...IN, width: 84 }, list: "transfer-appr1", value: r.appr1 || "", placeholder: "1차 결재자", onChange: e => updateRow(r.id, { appr1: e.target.value }) }),
+                  React.createElement("datalist", { id: "transfer-appr1" }, ["김윤구"].map(n => React.createElement("option", { key: n, value: n }))))),
+                // 2차 결재자 (직접 작성)
+                React.createElement("td", { style: TD }, React.createElement("input", { style: { ...IN, width: 84 }, value: r.appr2 || "", placeholder: "2차 결재자", onChange: e => updateRow(r.id, { appr2: e.target.value }) })),
+                // 관리: 수정/삭제
+                React.createElement("td", { style: TD }, React.createElement("div", { style: { display: "inline-flex", gap: 4 } },
+                  React.createElement("button", {
+                    type: "button",
+                    onClick: () => setEditingId(ed ? null : r.id),
+                    style: { fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", border: "1px solid " + (ed ? "#16A34A" : "#93C5FD"), background: ed ? "#16A34A" : "#EFF6FF", color: ed ? "#fff" : "#2563EB" }
+                  }, ed ? "완료" : "수정"),
+                  React.createElement(DelBtn, { onClick: () => deleteRow(r.id) }))));
+            }))))));
 }
 function Dashboard() {
   const saved = lsGet();
@@ -8053,6 +8545,10 @@ function Dashboard() {
     key: "insurance",
     label: "4대보험 검증",
     icon: "◉"
+  }, {
+    key: "transfer",
+    label: "이체 금액 관리",
+    icon: "₩"
   }];
   const PMETA = {
     home: {
@@ -8078,6 +8574,10 @@ function Dashboard() {
     insurance: {
       title: "4대보험 검증",
       sub: "공단 고지서 vs 급여대장 주민번호 기준 자동 매칭 · 차액 계산"
+    },
+    transfer: {
+      title: "이체 금액 관리",
+      sub: "사업부별 자금 이체 내역 · 출금건수/금액 집계 · 결재 관리"
     }
   };
   return React.createElement("div", {
@@ -8359,6 +8859,9 @@ function Dashboard() {
     selectedDate: selectedDate
   }), page === "insurance" && React.createElement(Page4Insurance, {
     cloudRev: cloudRev
+  }), page === "transfer" && React.createElement(PageTransfer, {
+    cloudRev: cloudRev,
+    adminName: adminName
   })))))), modal === "employee" && React.createElement(Modal, {
     title: "\uC9C1\uC6D0 \uCD94\uAC00",
     sub: "\uCD94\uAC00 \uC989\uC2DC \uC77C\uC815\uC774 \uC790\uB3D9 \uC0DD\uC131\uB429\uB2C8\uB2E4.",
