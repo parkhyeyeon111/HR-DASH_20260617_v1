@@ -126,7 +126,7 @@ html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;background
 .xtbl tbody tr:hover{background:#EFF6FF!important}
 .xtbl tbody tr.row-sel{background:#DBEAFE!important;outline:2px solid var(--sky) inset}
 .xtbl tbody tr.row-v2{background:#F0FDF4!important}
-.xtbl td{padding:7px 10px;border-bottom:1px solid #E8EEF5;border-right:1px solid #E8EEF5;white-space:nowrap;color:var(--text);vertical-align:middle}
+.xtbl td{padding:7px 10px;border-bottom:1px solid #E8EEF5;border-right:1px solid #E8EEF5;white-space:normal!important;word-break:break-all!important;overflow-wrap:anywhere;text-overflow:clip!important;overflow:visible;color:var(--text);vertical-align:middle}
 .xtbl td.rnum{background:linear-gradient(180deg,#F1F5F9,#E8EEF5);color:#94A3B8;font-size:10px;font-family:'DM Mono',monospace;text-align:center;font-weight:600;padding:7px 8px;min-width:36px;border-right:2px solid #CBD5E1}
 .xtbl td.mono{font-family:'DM Mono',monospace;font-size:11px}
 .xtbl td.amt{font-family:'DM Mono',monospace;font-weight:600;color:var(--sky-d)}
@@ -150,7 +150,7 @@ html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;background
 @keyframes slidein{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
 .fadein{animation:fadein .2s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.cl-panel{width:300px;min-width:300px;background:#fff;border-left:2px solid var(--sky-m);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.cl-panel{width:300px;min-width:300px;background:#fff;border-left:2px solid var(--sky-m);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;position:sticky;top:16px;align-self:flex-start;max-height:calc(100vh - 120px);border-radius:0 var(--r) var(--r) 0}
 .cl-panel-hd{padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#fff,var(--sky-l));flex-shrink:0}
 .cl-panel-body{flex:1;overflow-y:auto;padding:12px 14px}
 .cl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;margin-bottom:5px;transition:background .12s}
@@ -3323,10 +3323,11 @@ function PageOB({
     style: {
       display: "flex",
       gap: 0,
+      alignItems: "flex-start",
       background: "#fff",
       border: "1px solid var(--border2)",
       borderRadius: "var(--r)",
-      overflow: "hidden",
+      overflow: "visible",
       boxShadow: "var(--sh)"
     }
   }, React.createElement("div", {
@@ -3489,9 +3490,8 @@ function PageOB({
     }, React.createElement("span", {
       style: {
         display: "block",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
+        whiteSpace: "normal",
+        wordBreak: "break-all"
       }
     }, fmtCell(row.content))), React.createElement("td", {
       className: "amt"
@@ -5263,9 +5263,8 @@ function PageHistory({
     }, row[c.key] || "—") : React.createElement("span", {
       style: {
         display: "block",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
+        whiteSpace: "normal",
+        wordBreak: "break-all"
       }
     }, fmtCell(row[c.key])))), React.createElement("td", {
       style: {
@@ -5798,9 +5797,8 @@ function PageMemo({
     }, React.createElement("span", {
       style: {
         display: "block",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
+        whiteSpace: "normal",
+        wordBreak: "break-all"
       }
     }, m.content)), React.createElement("td", {
       style: {
@@ -5810,9 +5808,8 @@ function PageMemo({
     }, React.createElement("span", {
       style: {
         display: "block",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap"
+        whiteSpace: "normal",
+        wordBreak: "break-all"
       }
     }, m.remark || "—")), React.createElement("td", {
       style: {
@@ -8139,7 +8136,7 @@ function PageTransfer({ cloudRev, adminName }) {
   function deleteRow(id) {
     if (confirm("이 이체 내역을 삭제할까요?")) persist(rows.filter(r => r.id !== id));
   }
-  const TD = { padding: "6px 8px", borderBottom: "1px solid #E8EEF5", fontSize: 11.5, whiteSpace: "nowrap", color: "var(--text)", textAlign: "center", verticalAlign: "middle" };
+  const TD = { padding: "6px 8px", borderBottom: "1px solid #E8EEF5", fontSize: 11.5, whiteSpace: "normal", wordBreak: "break-all", color: "var(--text)", textAlign: "center", verticalAlign: "middle" };
   const IN = { width: "100%", fontSize: 11, padding: "4px 6px", border: "1px solid var(--border2)", borderRadius: 6, fontFamily: "inherit", boxSizing: "border-box", textAlign: "center" };
   const TH = { background: "var(--sky-d)", color: "#fff", padding: "7px 8px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", textAlign: "center", borderRight: "1px solid rgba(255,255,255,.15)" };
   // 결재 토글 버튼
