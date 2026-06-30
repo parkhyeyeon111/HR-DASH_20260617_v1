@@ -331,14 +331,22 @@ const SheetDB = function () {
     if (error) throw error;
     return rowsToState(data);
   }
+  let lastErr = null;
   async function upsert(collection, value) {
     if (!SUPA) return false;
     if (value === null || value === undefined) {
       const { error } = await SUPA.from(SUPA_TABLE).delete().eq("collection", collection);
-      return !error;
+      if (error) { lastErr = error; try { console.warn("[Supabase 삭제 실패]", collection, error.message || error); } catch (_) {} return false; }
+      return true;
     }
     const { error } = await SUPA.from(SUPA_TABLE).upsert({ collection: collection, value: value }, { onConflict: "collection" });
-    return !error;
+    if (error) {
+      lastErr = error;
+      try { console.warn("[Supabase 저장 실패]", collection, error.message || error, error); } catch (_) {}
+      return false;
+    }
+    lastErr = null;
+    return true;
   }
   let _channel = null;
   function subscribeRealtime() {
@@ -380,19 +388,38 @@ const SheetDB = function () {
     }
   }
   const timers = {};
+  const retries = {};
+  // 현재 STORE의 최신 값(재시도 시 최신본을 올리기 위함)
+  function currentVal(c) {
+    if (c.indexOf("cl:") === 0) return STORE.cl[c.slice(3)];
+    if (c.indexOf("ins:") === 0) return STORE.ins[c.slice(4)];
+    return STORE[c];
+  }
+  async function doPush(collection, key) {
+    if (timers[key]) { clearTimeout(timers[key]); delete timers[key]; }
+    let ok = false;
+    try { ok = await upsert(collection, currentVal(collection)); } catch (e) { lastErr = e; ok = false; }
+    if (ok) {
+      retries[key] = 0;
+      dirty.delete(key);
+      emit(dirty.size === 0 ? "saved" : "saving");
+    } else {
+      // ★ 저장 실패: dirty 를 '유지'해 로컬 미저장분이 서버 옛 데이터로 덮어써지지 않게 보호 + 자동 재시도
+      const n = (retries[key] || 0) + 1;
+      retries[key] = n;
+      emit("error");
+      if (n <= 6) {
+        const delay = Math.min(1000 * Math.pow(2, n - 1), 20000);
+        timers[key] = setTimeout(() => doPush(collection, key), delay);
+      }
+    }
+  }
   function schedulePush(collection, value, key) {
     dirty.add(key);
+    retries[key] = 0;
     emit("saving");
     if (timers[key]) clearTimeout(timers[key]);
-    timers[key] = setTimeout(async () => {
-      try {
-        await gasRun("saveCollection", collection, value);
-      } catch (e) {} finally {
-        delete timers[key];
-        dirty.delete(key);
-        emit(dirty.size === 0 ? "saved" : "saving");
-      }
-    }, 450);
+    timers[key] = setTimeout(() => doPush(collection, key), 450);
   }
   function setCollection(collection, value) {
     if (collection.indexOf("cl:") === 0) {
@@ -423,16 +450,25 @@ const SheetDB = function () {
       delete timers[collection];
     }
     dirty.add(collection);
+    retries[collection] = 0;
     emit("saving");
+    let ok = false;
     try {
-      await gasRun("saveCollection", collection, value);
-      return true;
+      ok = await upsert(collection, value);
     } catch (e) {
-      return false;
-    } finally {
+      lastErr = e;
+      ok = false;
+    }
+    if (ok) {
       dirty.delete(collection);
       emit(dirty.size === 0 ? "saved" : "saving");
+      return true;
     }
+    // ★ 실패: dirty 유지(로컬 보존) + 배경 자동 재시도 + 에러 표시
+    emit("error");
+    if (timers[collection]) clearTimeout(timers[collection]);
+    timers[collection] = setTimeout(() => doPush(collection, collection), 1500);
+    return false;
   }
   async function refresh() {
     try {
@@ -457,7 +493,7 @@ const SheetDB = function () {
     const token = "diag_" + Date.now();
     const w = await upsert("__diag__", token);
     if (!w) {
-      return { ok: false, stage: "write", msg: "Supabase 쓰기 실패.\nRLS 정책에서 anon 의 insert/update 가 허용되는지 확인하세요." };
+      return { ok: false, stage: "write", msg: "Supabase 쓰기 실패" + (lastErr ? " (" + (lastErr.message || JSON.stringify(lastErr)) + ")" : "") + ".\n• RLS 정책에서 anon 의 insert/update 가 허용되는지\n• 무료 플랜 사용량(용량/요청) 초과 또는 프로젝트 일시중지(Pause) 여부\n• 저장 데이터 크기가 너무 큰지\n를 Supabase 대시보드에서 확인하세요." };
     }
     let st;
     try { st = await fetchAll(); } catch (e) { return { ok: false, stage: "verify", msg: "확인용 읽기 실패: " + (e && e.message || e) }; }
@@ -477,7 +513,9 @@ const SheetDB = function () {
     Object.keys(STORE.ins || {}).forEach(ym => jobs.push(["ins:" + ym, STORE.ins[ym]]));
     let done = 0, fail = 0;
     for (const [c, v] of jobs) {
-      try { await gasRun("saveCollection", c, v); } catch (e) { fail++; }
+      let ok = false;
+      try { ok = await upsert(c, v); } catch (e) { ok = false; }
+      if (!ok) fail++;
       done++;
       if (onProgress) onProgress(done, jobs.length);
     }
@@ -507,6 +545,7 @@ const SheetDB = function () {
     isReady: () => ready,
     pending: () => dirty.size,
     status: () => status,
+    lastError: () => lastErr ? (lastErr.message || JSON.stringify(lastErr)) : "",
     storage: { url: SUPABASE_URL, key: SUPABASE_ANON_KEY, bucket: SUPA_BUCKET, client: SUPA, enabled: !!SUPA },
     STORE
   };
@@ -8989,19 +9028,25 @@ function SyncBadge() {
     },
     error: {
       dot: "#DC2626",
-      t: "연결 오류"
+      t: "저장 실패 · 재시도 중"
     }
   };
   const m = MAP[st] || MAP.idle;
   const spin = st === "saving" || st === "loading";
+  const errMsg = (st === "error" || st === "offline") && SheetDB.lastError ? SheetDB.lastError() : "";
   return React.createElement("span", {
+    onClick: st === "error" ? () => {
+      SheetDB.diagnose().then(r => alert(r && r.msg || "진단 결과 없음")).catch(e => alert("진단 실패: " + (e && e.message || e)));
+    } : undefined,
+    title: errMsg ? "Supabase 오류: " + errMsg + "\n(클릭하면 자동 진단)" : (st === "error" ? "클릭하면 자동 진단" : ""),
     style: {
       display: "inline-flex",
       alignItems: "center",
       gap: 6,
       fontSize: 10,
-      color: "#475569",
-      fontWeight: 600
+      color: st === "error" ? "#DC2626" : "#475569",
+      fontWeight: 600,
+      cursor: st === "error" ? "pointer" : "default"
     }
   }, React.createElement("span", {
     style: {
