@@ -821,10 +821,11 @@ function expandRoutine(routine, existing, team) {
     legal
   } = routine;
   const start = new Date(startDate || todayStr);
+  // 정기 일정 생성 범위 축소: 과거 6개월 ~ 미래 9개월 (기존 -24~+36개월 → tasks 저장 payload 비대화로 저장 실패 유발)
   const horizon = new Date(TODAY);
-  horizon.setMonth(horizon.getMonth() + 36);
+  horizon.setMonth(horizon.getMonth() + 9);
   const hStart = new Date(TODAY);
-  hStart.setMonth(hStart.getMonth() - 24);
+  hStart.setMonth(hStart.getMonth() - 6);
   let mi = 1;
   if (cycle === "분기별") mi = 3;else if (cycle === "반기별") mi = 6;else if (cycle === "연간") mi = 12;else if (cycle === "일회성") mi = null;
   const exKeys = new Set((existing || []).filter(t => t.routineId === rId).map(t => t.routineKey));
@@ -8387,6 +8388,28 @@ function Dashboard() {
       return changed ? next : prev;
     });
   }, [routines, team]);
+  // 저장 실패 원인이던 tasks 비대화 해소: 창(과거6개월~미래9개월) 밖의 '자동 생성 정기 일정(isRoutine)'만 1회 정리 후 즉시 저장.
+  //  → 사용자가 직접 적은 일정(isRoutine 아님)은 날짜와 무관하게 100% 보존.
+  const prunedRef = useRef(false);
+  useEffect(() => {
+    if (prunedRef.current) return;
+    const arr = tasks || [];
+    if (arr.length === 0) return;
+    const lo = new Date(TODAY); lo.setMonth(lo.getMonth() - 6);
+    const hi = new Date(TODAY); hi.setMonth(hi.getMonth() + 9);
+    const loS = fmt(lo), hiS = fmt(hi);
+    const pruned = arr.filter(t => {
+      if (!t || !t.isRoutine) return true; // 사용자/일반 일정 무조건 보존
+      const d = String(t.due || "");
+      return d >= loS && d <= hiS;         // 정기 일정은 창 안에 있는 것만 유지
+    });
+    prunedRef.current = true;
+    if (pruned.length !== arr.length) {
+      tasksRef.current = pruned;
+      setTasks(pruned);
+      try { SheetDB.pushNow("tasks", pruned); } catch (e) {}
+    }
+  }, [tasks]);
   useEffect(() => {
     setTs(prev => {
       let ch = false;
