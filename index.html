@@ -227,6 +227,8 @@ const SheetDB = function () {
     routines: null,
     memos: null,
     transfers: null,
+    histTmpl: null,
+    histChecks: null,
     gTmpl: null,
     guide: null,
     adminName: null,
@@ -275,7 +277,7 @@ const SheetDB = function () {
       if (Object.keys(sv).length === 0 && cur && typeof cur === "object" && Object.keys(cur).length > 0) { if (ready) schedulePush(k, cur, k); return; }
       STORE[k] = sv;
     };
-    ["ts", "gTmpl"].forEach(healObj);
+    ["ts", "gTmpl", "histTmpl", "histChecks"].forEach(healObj);
     if (typeof d.guide === "string" && !dirty.has("guide")) STORE.guide = d.guide;
     if (typeof d.adminName === "string" && d.adminName && !dirty.has("adminName")) STORE.adminName = d.adminName;
     if (d.cl && typeof d.cl === "object") {
@@ -505,7 +507,7 @@ const SheetDB = function () {
   async function forcePushAll(onProgress) {
     if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
     const jobs = [];
-    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "gTmpl", "guide", "adminName"].forEach(c => {
+    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
       const v = STORE[c];
       if (v !== null && v !== undefined) jobs.push([c, v]);
     });
@@ -4683,6 +4685,197 @@ function PageTeam({
     }
   }, "\uD300\uC6D0 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")))));
 }
+// ===== [업무 이력] 구분(D열)별 검증 기안 체크리스트 =====
+// 저장: hr_store 컬렉션 (팀 공유 + localStorage 자동 미러)
+//   histTmpl   : { 구분명: [문서명, ...] }            ← 템플릿(추가/수정/삭제 가능)
+//   histChecks : { rowIndex: { v1:{문서:true}, v2:{문서:true} } }  ← 행별 체크 상태
+const HIST_TMPL_KEY = "histTmpl";
+const HIST_CHECK_KEY = "histChecks";
+const HIST_TMPL_DEFAULT = {
+  "입사": ["입퇴사자 공유", "HR DATA", "채용품의서", "근로계약서", "연봉계약서"],
+  "퇴사": ["입퇴사자 공유", "HR DATA", "사직서", "퇴직합의서"],
+  "출산휴가": ["근태관리파트 엑셀", "휴직 신청서"],
+  "육아휴직": ["근태관리파트 엑셀", "휴직 신청서"],
+  "육아기간 단축근로": ["근태관리파트 엑셀", "휴직 신청서"],
+  "기타휴직": ["근태관리파트 엑셀", "휴직 신청서"],
+  "청원": ["휴직신청서", "휴가 신청서 기안"],
+  "보건휴가": ["휴직신청서", "휴가 신청서 기안"],
+  "연봉인상": ["신청서", "근로계약서", "연봉계약서"],
+  "계약 연장": ["신청서", "근로계약서", "연봉계약서"],
+  "고용형태 변경": ["신청서", "근로계약서", "연봉계약서"],
+  "당직수당": ["기안"],
+  "영업직(통신비)": ["기안"],
+  "생일": ["엑셀"],
+  "출산": ["엑셀"],
+  "명절상여": ["엑셀"],
+  "스팟보너스": ["기안", "지출결의서"],
+  "성과급(인센티브)": ["기안", "지출결의서"]
+};
+function loadHistTmpl() {
+  const t = SheetDB.get(HIST_TMPL_KEY);
+  return t && typeof t === "object" && !Array.isArray(t) && Object.keys(t).length ? t : { ...HIST_TMPL_DEFAULT };
+}
+function loadHistChecks() {
+  const c = SheetDB.get(HIST_CHECK_KEY);
+  return c && typeof c === "object" && !Array.isArray(c) ? c : {};
+}
+// 해당 행의 구분(D열)에 필요한 기안 문서 목록
+// 구(舊) 시스템에서 이미 검증 완료된 행인지 판정 (DB/시트 원본값 기준)
+//   "신하늬 확인 완료" 같은 문자열, true, "completed" 등 → 레거시 완료로 인정
+function histLegacyVerified(rawRowValue) {
+  if (rawRowValue === true) return true;
+  if (rawRowValue === "completed") return true;
+  if (typeof rawRowValue !== "string") return false;
+  const s = rawRowValue.trim();
+  if (!s) return false;
+  if (/미\s*완료|미검증|대기|없음/.test(s)) return false; // ★ "미완료"가 "완료"에 걸리는 오판 방지
+  return s.includes("완료") || s.includes("확인");
+}
+// 행/차수의 레거시 검증 여부: 원본 검증 필드(다양한 스키마 대응)를 폭넓게 확인
+function histLegacyOf(row, lv) {
+  if (!row) return false;
+  const raws = lv === "v1"
+    ? [row.verify1Done, row.verify1By, row.v1_status, row.verified1, row.verify1]
+    : [row.verify2Done, row.verify2By, row.v2_status, row.verified2, row.verify2];
+  return raws.some(v => histLegacyVerified(v));
+}
+function histDocsFor(tmpl, cls) {
+  const key = String(cls || "").trim();
+  const arr = tmpl && tmpl[key];
+  return Array.isArray(arr) ? arr : [];
+}
+// ⚙️ 검증 문서 설정 모달: 구분 선택 → 문서 추가/수정/삭제
+function HistTemplateModal({ tmpl, onSave, onClose, extraCls }) {
+  const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(tmpl || {})));
+  const clsList = [...new Set([...Object.keys(draft), ...(extraCls || [])])].filter(Boolean).sort();
+  const [sel, setSel] = useState(clsList[0] || "");
+  const [newCls, setNewCls] = useState("");
+  const [newDoc, setNewDoc] = useState("");
+  const docs = Array.isArray(draft[sel]) ? draft[sel] : [];
+  const setDocs = next => setDraft(p => ({ ...p, [sel]: next }));
+  return React.createElement(Modal, {
+    title: "⚙️ 검증 문서 설정",
+    onClose: onClose,
+    wide: true
+  }, React.createElement("div", { style: { display: "flex", gap: 14, minHeight: 300 } },
+    // 좌: 구분 목록
+    React.createElement("div", { style: { width: 180, borderRight: "1px solid var(--border)", paddingRight: 10, overflowY: "auto", maxHeight: 380 } },
+      clsList.map(c => React.createElement("div", {
+        key: c,
+        onClick: () => setSel(c),
+        style: { padding: "7px 9px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: sel === c ? 800 : 600, marginBottom: 3, background: sel === c ? "var(--sky-l)" : "transparent", color: sel === c ? "var(--sky-deep)" : "var(--t2)", display: "flex", justifyContent: "space-between", alignItems: "center" }
+      }, React.createElement("span", null, c), React.createElement("span", { style: { fontSize: 9.5, color: "var(--t3)" } }, (Array.isArray(draft[c]) ? draft[c].length : 0) + "건"))),
+      React.createElement("div", { style: { display: "flex", gap: 4, marginTop: 8 } },
+        React.createElement("input", { className: "inp", style: { fontSize: 11 }, placeholder: "구분 추가", value: newCls, onChange: e => setNewCls(e.target.value) }),
+        React.createElement("button", {
+          className: "btn btn-sm btn-primary",
+          onClick: () => { const v = newCls.trim(); if (!v) return; setDraft(p => ({ ...p, [v]: p[v] || [] })); setSel(v); setNewCls(""); }
+        }, "+"))),
+    // 우: 문서 목록 편집
+    React.createElement("div", { style: { flex: 1 } },
+      React.createElement("div", { style: { fontSize: 12, fontWeight: 800, marginBottom: 8, color: "var(--sky-deep)" } }, sel ? "[" + sel + "] 필수 기안 문서" : "구분을 선택하세요"),
+      sel && React.createElement("div", null,
+        docs.length === 0 ? React.createElement("div", { style: { fontSize: 11, color: "var(--t3)", padding: "10px 0" } }, "문서가 없습니다. 아래에서 추가하세요.") : null,
+        docs.map((d, i) => React.createElement("div", { key: i, style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 5 } },
+          React.createElement("span", { style: { fontSize: 10, color: "var(--t3)", width: 16 } }, i + 1),
+          React.createElement("input", {
+            className: "inp", style: { fontSize: 12 }, value: d,
+            onChange: e => { const n = docs.slice(); n[i] = e.target.value; setDocs(n); }
+          }),
+          React.createElement(DelBtn, { onClick: () => setDocs(docs.filter((_, j) => j !== i)) }))),
+        React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 10 } },
+          React.createElement("input", {
+            className: "inp", style: { fontSize: 12 }, placeholder: "문서명 입력 (예: 근로계약서)", value: newDoc,
+            onChange: e => setNewDoc(e.target.value),
+            onKeyDown: e => { if (e.key === "Enter") { const v = newDoc.trim(); if (v) { setDocs(docs.concat([v])); setNewDoc(""); } } }
+          }),
+          React.createElement("button", {
+            className: "btn btn-sm btn-primary",
+            onClick: () => { const v = newDoc.trim(); if (!v) return; setDocs(docs.concat([v])); setNewDoc(""); }
+          }, "+ 추가")),
+        React.createElement("button", {
+          className: "btn btn-ghost btn-sm", style: { marginTop: 14 },
+          onClick: () => { if (confirm("[" + sel + "] 구분을 템플릿에서 삭제할까요?")) { setDraft(p => { const n = { ...p }; delete n[sel]; return n; }); setSel(""); } }
+        }, "이 구분 삭제")))),
+    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 } },
+      React.createElement("button", {
+        className: "btn btn-ghost btn-sm",
+        onClick: () => { if (confirm("기본 템플릿으로 되돌릴까요?")) setDraft({ ...HIST_TMPL_DEFAULT }); }
+      }, "기본값 복원"),
+      React.createElement("div", { style: { display: "flex", gap: 8 } },
+        React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: onClose }, "취소"),
+        React.createElement("button", { className: "btn btn-primary btn-sm", onClick: () => onSave(draft) }, "저장"))));
+}
+// 검증 셀(K/L): 구분별 기안 문서 체크리스트 — 진행률 표시 + 클릭 시 인라인 체크리스트
+function HistVerifyCell({ lv, row, docs, checks, done, by, at, busy, open, locked, legacy, onOpen, onToggleDoc, onLegacyToggle, accent, accentBg, accentTxt, label }) {
+  const total = docs.length;
+  const cnt = docs.filter(d => checks[d]).length;
+  const pct = done || legacy ? 100 : total ? Math.round(cnt / total * 100) : 0;
+  const cellBg = done || legacy ? accentBg : locked ? "#F8FAFC" : "transparent";
+  // ★ 하위호환: 구 시스템에서 이미 검증된 행 → 체크리스트 미적용, "완료"로 잠금 표시(검증자/일시 보존)
+  if (legacy) {
+    return React.createElement("td", { style: { minWidth: 118, background: accentBg, verticalAlign: "top" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+        React.createElement("span", {
+          style: { width: 16, height: 16, borderRadius: 4, background: accent, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
+        }, "✓"),
+        React.createElement("span", {
+          style: { fontSize: 10.5, fontWeight: 800, color: accentTxt }
+        }, label + "완료")),
+      by ? React.createElement("div", { style: { fontSize: 9.5, color: accentTxt, paddingLeft: 22, marginTop: 1 } }, String(by)) : null,
+      at ? React.createElement("div", { style: { fontSize: 8.5, color: "var(--t3)", paddingLeft: 22 } }, String(at).slice(0, 16)) : null);
+  }
+  // 템플릿이 없는 구분 → 기존 단일 체크박스 방식으로 동작(호환)
+  if (total === 0) {
+    return React.createElement("td", { style: { minWidth: 118, background: cellBg } },
+      React.createElement("button", {
+        onClick: () => { if (!locked) onLegacyToggle(); },
+        disabled: busy || locked,
+        style: { display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: locked ? "not-allowed" : "pointer", fontFamily: "inherit", padding: 0 }
+      }, React.createElement("span", {
+        style: { width: 16, height: 16, borderRadius: 4, border: "1.5px solid " + (done ? accent : "#CBD5E1"), background: done ? accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 800 }
+      }, done ? "✓" : ""), React.createElement("span", {
+        style: { fontSize: 10.5, fontWeight: 700, color: done ? accentTxt : "var(--t3)" }
+      }, busy ? "..." : done ? (by || label + "완료") : locked ? "대기" : "미완료")),
+      done && at ? React.createElement("div", { style: { fontSize: 9, color: "var(--t3)", paddingLeft: 22, marginTop: 2 } }, String(at).slice(0, 16)) : null);
+  }
+  return React.createElement("td", { style: { minWidth: 132, background: cellBg, verticalAlign: "top" } },
+    // 요약 버튼 (진행률 / 완료)
+    React.createElement("button", {
+      onClick: onOpen,
+      disabled: locked,
+      title: locked ? "1차 완료 후 가능" : "클릭하여 기안 문서 체크",
+      style: {
+        width: "100%", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start",
+        border: "1px solid " + (done ? accent : locked ? "#E2E8F0" : "#CBD5E1"),
+        background: "#fff", borderRadius: 7, padding: "4px 6px",
+        cursor: locked ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: locked ? .55 : 1
+      }
+    }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, width: "100%" } },
+      React.createElement("span", {
+        style: { fontSize: 10, fontWeight: 800, color: done ? accentTxt : locked ? "#CBD5E1" : "var(--t2)" }
+      }, busy ? "..." : done ? label + "완료" : locked ? "대기" : cnt + "/" + total + " 완료"),
+      React.createElement("span", { style: { marginLeft: "auto", fontSize: 8, color: "var(--t3)" } }, open ? "▲" : "▼")),
+      // 진행 바
+      React.createElement("div", { style: { width: "100%", height: 4, borderRadius: 3, background: "#E2E8F0", overflow: "hidden" } },
+        React.createElement("div", { style: { width: pct + "%", height: "100%", background: done ? accent : "#93C5FD", transition: "width .15s" } })),
+      done && by ? React.createElement("div", { style: { fontSize: 9, color: accentTxt, fontWeight: 700 } }, by) : null,
+      done && at ? React.createElement("div", { style: { fontSize: 8.5, color: "var(--t3)" } }, String(at).slice(0, 16)) : null),
+    // 인라인 체크리스트
+    open && !locked ? React.createElement("div", {
+      style: { marginTop: 5, border: "1px solid " + accent + "55", borderRadius: 8, background: "#fff", padding: 6, boxShadow: "0 4px 12px rgba(0,0,0,.08)" }
+    }, docs.map(d => React.createElement("label", {
+      key: d,
+      style: { display: "flex", alignItems: "center", gap: 6, padding: "3px 4px", borderRadius: 5, cursor: "pointer", fontSize: 10.5, whiteSpace: "normal", wordBreak: "break-all" }
+    }, React.createElement("input", {
+      type: "checkbox",
+      checked: !!checks[d],
+      onChange: () => onToggleDoc(d),
+      style: { width: 13, height: 13, accentColor: accent, cursor: "pointer", flexShrink: 0 }
+    }), React.createElement("span", {
+      style: { color: checks[d] ? accentTxt : "var(--t2)", fontWeight: checks[d] ? 700 : 500, textDecoration: checks[d] ? "none" : "none" }
+    }, d)))) : null);
+}
 function PageHistory({
   adminName,
   setAdminName,
@@ -4691,10 +4884,63 @@ function PageHistory({
   apiStatus,
   setApiStatus,
   apiUrl,
-  setApiUrl
+  setApiUrl,
+  cloudRev
 }) {
   const [vLoad, setVLoad] = useState({});
   const [showUrlEdit, setShowUrlEdit] = useState(false);
+  // ===== 구분별 다중 기안 체크리스트 =====
+  const [histTmpl, setHistTmpl] = useState(() => loadHistTmpl());
+  const [histChecks, setHistChecks] = useState(() => loadHistChecks());
+  const [showTmplModal, setShowTmplModal] = useState(false);
+  const [openCell, setOpenCell] = useState(null); // "v1_12" 처럼 열린 체크리스트 셀
+  useSkipFirstEffect(() => {
+    setHistTmpl(loadHistTmpl());
+    setHistChecks(loadHistChecks());
+  }, [cloudRev]);
+  const saveTmpl = next => {
+    setHistTmpl(next);
+    SheetDB.pushNow(HIST_TMPL_KEY, next);
+    setShowTmplModal(false);
+  };
+  // 행/차수별 체크 상태 조회
+  const getChecks = (rowIndex, lv) => {
+    const r = histChecks[String(rowIndex)] || {};
+    return r[lv] || {};
+  };
+  const docsOfRow = row => histDocsFor(histTmpl, row.isReflected);
+  // ★ 하위호환: 신규 체크리스트 이력이 전혀 없는데 이미 검증 완료된 행 = 구 시스템 데이터
+  //    → 체크리스트를 생성/초기화하지 않고 "완료" 상태 그대로 잠금 렌더(검증자/일시 보존)
+  const isLegacyRow = (row, lv) => {
+    const hasNewChecks = Object.keys(getChecks(row.rowIndex, lv)).length > 0;
+    return !hasNewChecks && histLegacyOf(row, lv);
+  };
+  const doneCount = (row, lv) => {
+    const docs = docsOfRow(row);
+    const c = getChecks(row.rowIndex, lv);
+    return docs.filter(d => c[d]).length;
+  };
+  const allDone = (row, lv) => {
+    if (isLegacyRow(row, lv)) return true; // 레거시 완료 행은 카운트 우회
+    const docs = docsOfRow(row);
+    return docs.length > 0 && docs.every(d => getChecks(row.rowIndex, lv)[d]);
+  };
+  // 개별 문서 체크 토글 → 저장 + 전부 체크되면 해당 차수 '완료' 자동 반영(시트 연동 toggleV1/V2 재사용)
+  function toggleDoc(row, lv, doc) {
+    if (isLegacyRow(row, lv)) return; // ★ 기존 검증 기록 보호: 레거시 완료 행은 체크 변경 불가
+    const key = String(row.rowIndex);
+    const cur = getChecks(row.rowIndex, lv);
+    const nextLv = { ...cur };
+    if (nextLv[doc]) delete nextLv[doc]; else nextLv[doc] = true;
+    const next = { ...histChecks, [key]: { ...(histChecks[key] || {}), [lv]: nextLv } };
+    setHistChecks(next);
+    SheetDB.pushNow(HIST_CHECK_KEY, next);
+    // 완료 여부 재계산 → 행 상태(verify1Done/verify2Done)와 다르면 동기화 (모두 체크 시 자동 "1차완료")
+    const docs = docsOfRow(row);
+    const nowAll = docs.length > 0 && docs.every(d => nextLv[d]);
+    if (lv === "v1" && nowAll !== !!row.verify1Done) toggleV1(row);
+    if (lv === "v2" && nowAll !== !!row.verify2Done) toggleV2(row);
+  }
   const [fMonth, setFMonth] = useState([]); // A열 급여반영월 (다중)
   const [fMgr, setFMgr] = useState([]);     // C열 담당자 (다중)
   const [fRefl, setFRefl] = useState([]);   // D열 반영/구분 (다중)
@@ -4986,6 +5232,10 @@ function PageHistory({
       flex: 1
     }
   }), React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setShowTmplModal(true),
+    title: "구분별 필수 기안 문서 목록 관리"
+  }, "⚙️ 검증 문서 설정"), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
     onClick: () => setShowUrlEdit(p => !p)
   }, "URL \uC124\uC815"), React.createElement("button", {
@@ -5306,131 +5556,50 @@ function PageHistory({
         whiteSpace: "normal",
         wordBreak: "break-all"
       }
-    }, fmtCell(row[c.key])))), React.createElement("td", {
-      style: {
-        minWidth: 110,
-        background: v1 ? "#EEF2FF" : "transparent"
-      }
-    }, React.createElement("div", {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        gap: 3
-      }
-    }, React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 6
-      }
-    }, React.createElement("button", {
-      onClick: () => toggleV1(row),
-      disabled: !!vLoad[v1k],
-      style: {
-        width: 16,
-        height: 16,
-        borderRadius: 4,
-        border: "1.5px solid " + (v1 ? "#6366F1" : "#CBD5E1"),
-        background: v1 ? "#6366F1" : "transparent",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        flexShrink: 0
-      }
-    }, v1 && React.createElement("svg", {
-      width: "10",
-      height: "10",
-      viewBox: "0 0 10 10",
-      fill: "none"
-    }, React.createElement("path", {
-      d: "M2 5l2.5 2.5 4-4",
-      stroke: "white",
-      strokeWidth: "1.8",
-      strokeLinecap: "round"
-    }))), React.createElement("span", {
-      style: {
-        fontSize: 10.5,
-        fontWeight: 700,
-        color: v1 ? "#4F46E5" : "var(--t3)"
-      }
-    }, vLoad[v1k] ? "..." : v1 ? row.verify1By || "완료" : "미완료")), v1 && React.createElement("div", {
-      style: {
-        fontSize: 9.5,
-        color: "#6366F1",
-        paddingLeft: 22
-      }
-    }, React.createElement("div", null, row.verify1By || "—"), React.createElement("div", {
-      style: {
-        color: "var(--t3)"
-      }
-    }, String(row.verify1At || "").slice(0, 16))))), React.createElement("td", {
-      style: {
-        minWidth: 110,
-        background: v2 ? "#ECFDF5" : !v1 ? "#F8FAFC" : "transparent"
-      }
-    }, React.createElement("div", {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        gap: 3
-      }
-    }, React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 6
-      }
-    }, React.createElement("button", {
-      onClick: () => toggleV2(row),
-      disabled: !v1 || !!vLoad[v2k],
-      style: {
-        width: 16,
-        height: 16,
-        borderRadius: 4,
-        border: "1.5px solid " + (v2 ? "#10B981" : !v1 ? "#E2E8F0" : "#CBD5E1"),
-        background: v2 ? "#10B981" : "transparent",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: v1 ? "pointer" : "not-allowed",
-        flexShrink: 0,
-        opacity: !v1 ? 0.4 : 1
-      }
-    }, v2 && React.createElement("svg", {
-      width: "10",
-      height: "10",
-      viewBox: "0 0 10 10",
-      fill: "none"
-    }, React.createElement("path", {
-      d: "M2 5l2.5 2.5 4-4",
-      stroke: "white",
-      strokeWidth: "1.8",
-      strokeLinecap: "round"
-    }))), React.createElement("span", {
-      style: {
-        fontSize: 10.5,
-        fontWeight: 700,
-        color: v2 ? "#059669" : !v1 ? "#CBD5E1" : "var(--t3)"
-      }
-    }, vLoad[v2k] ? "..." : v2 ? row.verify2By || "완료" : !v1 ? "대기" : "미완료")), v2 && React.createElement("div", {
-      style: {
-        fontSize: 9.5,
-        color: "#059669",
-        paddingLeft: 22
-      }
-    }, React.createElement("div", null, row.verify2By || "—"), React.createElement("div", {
-      style: {
-        color: "var(--t3)"
-      }
-    }, String(row.verify2At || "").slice(0, 16))), !v1 && !v2 && React.createElement("div", {
-      style: {
-        fontSize: 9.5,
-        color: "#CBD5E1",
-        paddingLeft: 22
-      }
-    }, "1\uCC28 \uC644\uB8CC \uD6C4 \uAC00\uB2A5"))));
-  })))))));
+    }, fmtCell(row[c.key])))), React.createElement(HistVerifyCell, {
+      lv: "v1",
+      row: row,
+      docs: docsOfRow(row),
+      checks: getChecks(row.rowIndex, "v1"),
+      legacy: isLegacyRow(row, "v1"),
+      done: v1,
+      by: row.verify1By,
+      at: row.verify1At,
+      busy: !!vLoad[v1k],
+      open: openCell === v1k,
+      onOpen: () => setOpenCell(openCell === v1k ? null : v1k),
+      onToggleDoc: doc => toggleDoc(row, "v1", doc),
+      onLegacyToggle: () => toggleV1(row),
+      accent: "#6366F1",
+      accentBg: "#EEF2FF",
+      accentTxt: "#4F46E5",
+      label: "1차"
+    }), React.createElement(HistVerifyCell, {
+      lv: "v2",
+      row: row,
+      docs: docsOfRow(row),
+      checks: getChecks(row.rowIndex, "v2"),
+      legacy: isLegacyRow(row, "v2"),
+      done: v2,
+      by: row.verify2By,
+      at: row.verify2At,
+      busy: !!vLoad[v2k],
+      open: openCell === v2k,
+      locked: !v1 && !isLegacyRow(row, "v1"),
+      onOpen: () => { if (!v1 && !isLegacyRow(row, "v1")) return; setOpenCell(openCell === v2k ? null : v2k); },
+      onToggleDoc: doc => toggleDoc(row, "v2", doc),
+      onLegacyToggle: () => toggleV2(row),
+      accent: "#10B981",
+      accentBg: "#ECFDF5",
+      accentTxt: "#059669",
+      label: "2차"
+    }));
+  })))))), showTmplModal && React.createElement(HistTemplateModal, {
+    tmpl: histTmpl,
+    extraCls: reflOpts,
+    onSave: saveTmpl,
+    onClose: () => setShowTmplModal(false)
+  }));
 }
 const MEMO_LS_KEY = "hr_shine_memos_v1";
 const MEMO_CATS = ["일반 메모", "노무/법적 이슈", "임직원 요청", "시스템 에러", "제도 변경"];
@@ -8821,7 +8990,25 @@ function Dashboard() {
       display: "inline-block",
       flexShrink: 0
     }
-  }), "\uAD6C\uAE00 \uC2DC\uD2B8 \uBC14\uB85C\uAC00\uAE30"), React.createElement("button", {
+  }), "\uAD6C\uAE00 \uC2DC\uD2B8 \uBC14\uB85C\uAC00\uAE30"), React.createElement("a", {
+    href: "https://cocen365-my.sharepoint.com/:x:/p/hypark/IQCpMM2BnCQ-QbLcJbzovVffATSc8KaQliPoah0Ejl2xyUI?e=v3KrLT",
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      fontSize: 11,
+      padding: "5px 12px",
+      borderRadius: "var(--rs)",
+      border: "1px solid #BBF7D0",
+      background: "#F0FDF4",
+      color: "#16A34A",
+      fontWeight: 600,
+      textDecoration: "none",
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDCCB \uCCB4\uD06C\uB9AC\uC2A4\uD2B8"), React.createElement("button", {
     className: "btn btn-ghost",
     style: {
       fontSize: 11,
@@ -8912,7 +9099,8 @@ function Dashboard() {
     apiStatus: apiStatus,
     setApiStatus: setApiStatus,
     apiUrl: apiUrl,
-    setApiUrl: setApiUrl
+    setApiUrl: setApiUrl,
+    cloudRev: cloudRev
   }), page === "memo" && React.createElement(PageMemo, {
     cloudRev: cloudRev,
     selectedDate: selectedDate
