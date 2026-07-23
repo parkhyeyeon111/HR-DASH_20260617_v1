@@ -227,6 +227,7 @@ const SheetDB = function () {
     routines: null,
     memos: null,
     transfers: null,
+    pension: null,
     histTmpl: null,
     histChecks: null,
     gTmpl: null,
@@ -277,7 +278,7 @@ const SheetDB = function () {
       if (Object.keys(sv).length === 0 && cur && typeof cur === "object" && Object.keys(cur).length > 0) { if (ready) schedulePush(k, cur, k); return; }
       STORE[k] = sv;
     };
-    ["ts", "gTmpl", "histTmpl", "histChecks"].forEach(healObj);
+    ["ts", "gTmpl", "histTmpl", "histChecks", "pension"].forEach(healObj);
     if (typeof d.guide === "string" && !dirty.has("guide")) STORE.guide = d.guide;
     if (typeof d.adminName === "string" && d.adminName && !dirty.has("adminName")) STORE.adminName = d.adminName;
     if (d.cl && typeof d.cl === "object") {
@@ -507,7 +508,7 @@ const SheetDB = function () {
   async function forcePushAll(onProgress) {
     if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
     const jobs = [];
-    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
+    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "pension", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
       const v = STORE[c];
       if (v !== null && v !== undefined) jobs.push([c, v]);
     });
@@ -8267,6 +8268,328 @@ function PageTransfer({ cloudRev, adminName }) {
                   React.createElement(DelBtn, { onClick: () => deleteRow(r.id) }))));
             }))))));
 }
+// ===================== 퇴직연금 검증 =====================
+const PEN_DEPTS = ["SP", "ST", "CW(MS)", "CW(DW)"];
+const PEN_FIRMS_DEFAULT = ["한국투자증권", "교보생명", "삼성생명", "미래에셋증권", "신한은행"];
+// 운용사명 정규화(키 생성용): 공백/괄호/주식회사 등만 제거 — 접미사는 남겨 서로 다른 운용사가 합쳐지지 않게 함
+function penNormFirm(name) {
+  let s = String(name == null ? "" : name).trim();
+  if (!s) return "";
+  s = s.replace(/\(주\)|주식회사|㈜/g, "");
+  s = s.replace(/[\s\-_.,()[\]]/g, "");
+  return s.toLowerCase();
+}
+// 동일 운용사 판정: '미래에셋' vs '미래에셋증권' 처럼 한쪽이 다른 쪽으로 시작하면 같은 행으로 인식.
+//  ('삼성생명' vs '삼성증권' 처럼 접미사가 다르면 서로 다른 행으로 정확히 구분)
+function penSameFirm(a, b) {
+  const x = penNormFirm(a), y = penNormFirm(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const short = x.length <= y.length ? x : y;
+  const long = x.length <= y.length ? y : x;
+  return short.length >= 2 && long.indexOf(short) === 0;
+}
+// 엑셀 A열(운용사)/B열(금액) 파싱 — 합계/텍스트/빈 줄 제외
+function penParseRows(data) {
+  const out = [];
+  const SKIP = /^(총\s*합계|합\s*계|총\s*계|소\s*계|계|운용사|운용사명|금액|구분|합계금액)$/;
+  (data || []).forEach(r => {
+    if (!r) return;
+    const nameRaw = String(r[0] == null ? "" : r[0]).trim();
+    if (!nameRaw) return;
+    if (SKIP.test(nameRaw.replace(/\s+/g, " "))) return;      // 합계/헤더 행 제외
+    if (/합계|총계|소계/.test(nameRaw)) return;
+    const amtRaw = String(r[1] == null ? "" : r[1]).replace(/[^0-9.\-]/g, "");
+    if (amtRaw === "" ) return;                                 // 금액 없는 텍스트 행 제외
+    const amt = Number(amtRaw);
+    if (!isFinite(amt)) return;
+    if (!penNormFirm(nameRaw)) return;
+    out.push({ name: nameRaw, amount: Math.round(amt) });
+  });
+  return out;
+}
+function penMonthKey(d) {
+  const dt = d ? new Date(d) : new Date();
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0");
+}
+function loadPension() {
+  const p = SheetDB.get("pension");
+  return p && typeof p === "object" && !Array.isArray(p) ? p : {};
+}
+function penEmptyMonth() {
+  return { firms: PEN_FIRMS_DEFAULT.slice(), cells: {}, notes: {}, uploaded: {} };
+}
+// 사업부별 엑셀 업로드 모달
+function PenUploadModal({ onClose, onUploaded }) {
+  const [dept, setDept] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  function handleFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (!dept) { setErr("사업부를 먼저 선택해주세요."); e.target.value = ""; return; }
+    setBusy(true); setErr("");
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        const rows = penParseRows(data);
+        if (rows.length === 0) {
+          setErr("운용사/금액 데이터를 인식하지 못했습니다. (A열 운용사명, B열 금액)");
+          setBusy(false); return;
+        }
+        onUploaded(dept, rows);   // 동일 사업부 재업로드 시 경고 없이 덮어쓰기
+      } catch (ex) {
+        setErr("파일 읽기 실패: " + (ex && ex.message || ex));
+        setBusy(false);
+      }
+    };
+    reader.readAsArrayBuffer(f);
+    e.target.value = "";
+  }
+  return React.createElement(Modal, {
+    title: "📁 사업부별 엑셀 업로드",
+    sub: "A열 운용사명 · B열 금액 (합계/빈 행 자동 제외)",
+    onClose: onClose
+  }, React.createElement("div", null,
+    React.createElement(FR, { label: "사업부 선택" }, React.createElement("div", {
+      style: { display: "flex", gap: 6, flexWrap: "wrap" }
+    }, PEN_DEPTS.map(d => React.createElement("button", {
+      key: d,
+      type: "button",
+      onClick: () => { setDept(d); setErr(""); },
+      style: {
+        flex: "1 0 auto", minWidth: 72, fontSize: 12, fontWeight: 700, padding: "8px 10px", borderRadius: 8,
+        cursor: "pointer", fontFamily: "inherit",
+        border: "1.5px solid " + (dept === d ? "#7C3AED" : "var(--border2)"),
+        background: dept === d ? "#7C3AED" : "#fff",
+        color: dept === d ? "#fff" : "var(--t2)"
+      }
+    }, d)))),
+    React.createElement("label", {
+      style: {
+        display: "block", marginTop: 8, padding: "22px 12px", textAlign: "center",
+        border: "2px dashed " + (dept ? "#C4B5FD" : "#E2E8F0"), borderRadius: 10,
+        background: dept ? "#F5F3FF" : "#F8FAFC",
+        cursor: dept ? "pointer" : "not-allowed"
+      }
+    }, React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: dept ? "#6D28D9" : "var(--t3)" } },
+      dept ? "[" + dept + "] 엑셀 파일 선택" : "먼저 사업부를 선택하세요"),
+      React.createElement("div", { style: { fontSize: 10.5, color: "var(--t3)", marginTop: 4 } }, "(.xlsx, .xls, .csv) · 같은 사업부 재업로드 시 최신 데이터로 자동 덮어쓰기"),
+      React.createElement("input", {
+        type: "file", accept: ".xlsx,.xls,.csv", disabled: !dept || busy,
+        style: { display: "none" }, onChange: handleFile
+      })),
+    err ? React.createElement("div", {
+      style: { marginTop: 8, fontSize: 11, color: "#DC2626", fontWeight: 600 }
+    }, err) : null,
+    busy ? React.createElement("div", { style: { marginTop: 8, fontSize: 11, color: "var(--t3)" } }, "처리 중...") : null));
+}
+function PagePension({ cloudRev }) {
+  const [store, setStore] = useState(() => loadPension());
+  const [ym, setYm] = useState(() => penMonthKey());
+  const [showUpload, setShowUpload] = useState(false);
+  useSkipFirstEffect(() => { setStore(loadPension()); }, [cloudRev]);
+  const cur = store[ym] || penEmptyMonth();
+  const firms = Array.isArray(cur.firms) && cur.firms.length ? cur.firms : PEN_FIRMS_DEFAULT.slice();
+  const cells = cur.cells || {};
+  const notes = cur.notes || {};
+  const uploaded = cur.uploaded || {};
+  const ckey = (firm, dept) => penNormFirm(firm) + "||" + dept;
+  const getCell = (firm, dept) => Number(cells[ckey(firm, dept)] || 0);
+  // 자동 저장(입력·업로드 즉시 서버 반영)
+  const persist = nextMonth => {
+    const next = { ...store, [ym]: nextMonth };
+    setStore(next);
+    SheetDB.pushNow("pension", next);
+  };
+  const setCell = (firm, dept, val) => {
+    const n = Number(String(val).replace(/[^0-9\-]/g, "")) || 0;
+    persist({ ...cur, firms: firms, cells: { ...cells, [ckey(firm, dept)]: n }, notes: notes, uploaded: uploaded });
+  };
+  const setNote = (firm, txt) => {
+    persist({ ...cur, firms: firms, cells: cells, notes: { ...notes, [penNormFirm(firm)]: txt }, uploaded: uploaded });
+  };
+  // 업로드 → 해당 사업부 열 전체를 최신 데이터로 덮어쓰기(경고 없음)
+  function applyUpload(dept, rows) {
+    const nextFirms = firms.slice();
+    const nextCells = { ...cells };
+    // 기존 해당 사업부 값 초기화 후 재기입
+    nextFirms.forEach(f => { delete nextCells[ckey(f, dept)]; });
+    rows.forEach(r => {
+      let match = nextFirms.find(f => penSameFirm(f, r.name));
+      if (!match) { nextFirms.push(r.name); match = r.name; }   // 새 운용사는 행 자동 추가
+      nextCells[ckey(match, dept)] = r.amount;
+    });
+    persist({ ...cur, firms: nextFirms, cells: nextCells, notes: notes, uploaded: { ...uploaded, [dept]: nowIso() } });
+    setShowUpload(false);
+  }
+  // 사업부 데이터 삭제/초기화
+  function clearDept(dept) {
+    if (!confirm("[" + dept + "] 사업부의 모든 운용사 금액을 초기화할까요?")) return;
+    const nextCells = { ...cells };
+    firms.forEach(f => { delete nextCells[ckey(f, dept)]; });
+    const nextUp = { ...uploaded }; delete nextUp[dept];
+    persist({ ...cur, firms: firms, cells: nextCells, notes: notes, uploaded: nextUp });
+  }
+  function addFirm() {
+    const nm = prompt("추가할 운용사명을 입력하세요.");
+    if (!nm || !nm.trim()) return;
+    if (firms.some(f => penSameFirm(f, nm))) { alert("이미 있는 운용사입니다."); return; }
+    persist({ ...cur, firms: firms.concat([nm.trim()]), cells: cells, notes: notes, uploaded: uploaded });
+  }
+  function delFirm(firm) {
+    if (!confirm("[" + firm + "] 행을 삭제할까요?")) return;
+    const nextCells = { ...cells };
+    PEN_DEPTS.forEach(d => { delete nextCells[ckey(firm, d)]; });
+    persist({ ...cur, firms: firms.filter(f => f !== firm), cells: nextCells, notes: notes, uploaded: uploaded });
+  }
+  // 운용사명 수정: 금액/비고 값을 새 이름 키로 이전(데이터 유실 없음)
+  function renameFirm(oldName, newName) {
+    const nm = String(newName || "").trim();
+    if (!nm || nm === oldName) return;
+    if (firms.some(f => f !== oldName && penSameFirm(f, nm))) { alert("이미 있는 운용사입니다."); return; }
+    const nextCells = { ...cells };
+    PEN_DEPTS.forEach(d => {
+      const ov = nextCells[ckey(oldName, d)];
+      delete nextCells[ckey(oldName, d)];
+      if (ov !== undefined) nextCells[penNormFirm(nm) + "||" + d] = ov;
+    });
+    const nextNotes = { ...notes };
+    const on = nextNotes[penNormFirm(oldName)];
+    delete nextNotes[penNormFirm(oldName)];
+    if (on !== undefined) nextNotes[penNormFirm(nm)] = on;
+    persist({ ...cur, firms: firms.map(f => f === oldName ? nm : f), cells: nextCells, notes: nextNotes, uploaded: uploaded });
+  }
+  // 집계
+  const rowSum = firm => PEN_DEPTS.reduce((a, d) => a + getCell(firm, d), 0);
+  const colSum = dept => firms.reduce((a, f) => a + getCell(f, dept), 0);
+  const grandTotal = firms.reduce((a, f) => a + rowSum(f), 0);
+  const deptFilled = PEN_DEPTS.filter(d => colSum(d) > 0 || uploaded[d]);
+  const allDone = deptFilled.length === PEN_DEPTS.length;
+  // 조회 년/월: 작년 ~ 내년까지 자유 선택(1~12월 전부). 데이터 없는 월은 새 매트릭스로 시작
+  const nowY = new Date().getFullYear();
+  const yearOpts = [];
+  for (let y = nowY - 1; y <= nowY + 1; y++) yearOpts.push(y);
+  Object.keys(store).forEach(k => {
+    const y = Number(String(k).slice(0, 4));
+    if (y && yearOpts.indexOf(y) < 0) yearOpts.push(y);
+  });
+  yearOpts.sort((a, b) => a - b);
+  const curY = Number(ym.slice(0, 4)) || nowY;
+  const curM = Number(ym.slice(5, 7)) || 1;
+  const setYM = (y, m) => setYm(y + "-" + String(m).padStart(2, "0"));
+  const monthHasData = m => {
+    const k = curY + "-" + String(m).padStart(2, "0");
+    const d = store[k];
+    return !!(d && d.cells && Object.keys(d.cells).length);
+  };
+  const won = v => Number(v || 0).toLocaleString("ko-KR");
+  const TH = { background: "var(--sky-d)", color: "#fff", padding: "7px 8px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", textAlign: "center", borderRight: "1px solid rgba(255,255,255,.15)" };
+  const TD = { padding: "5px 7px", borderBottom: "1px solid #E8EEF5", borderRight: "1px solid #E8EEF5", fontSize: 11.5, verticalAlign: "middle" };
+  const statCard = (label, value, clr, sub) => React.createElement("div", {
+    style: { flex: 1, minWidth: 180, background: "#fff", border: "1px solid var(--border2)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--sh)", borderTop: "3px solid " + clr }
+  }, React.createElement("div", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 600, marginBottom: 4 } }, label),
+    React.createElement("div", { style: { fontSize: 21, fontWeight: 800, color: clr } }, value),
+    sub ? React.createElement("div", { style: { fontSize: 10, color: "var(--t3)", marginTop: 2 } }, sub) : null);
+  return React.createElement("div", { className: "fadein" },
+    // 툴바
+    React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14 } },
+      React.createElement("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 700 } }, "조회 월"),
+      React.createElement("select", {
+        className: "inp", style: { width: "auto", fontSize: 11 }, value: curY,
+        onChange: e => setYM(Number(e.target.value), curM)
+      }, yearOpts.map(y => React.createElement("option", { key: y, value: y }, y + "년"))),
+      React.createElement("select", {
+        className: "inp", style: { width: "auto", fontSize: 11 }, value: curM,
+        onChange: e => setYM(curY, Number(e.target.value))
+      }, [1,2,3,4,5,6,7,8,9,10,11,12].map(m => React.createElement("option", { key: m, value: m },
+        String(m).padStart(2, "0") + "월" + (monthHasData(m) ? " ●" : "")))),
+      React.createElement("button", {
+        className: "btn btn-ghost btn-sm", onClick: () => setYm(penMonthKey()), title: "이번 달로 이동"
+      }, "당월"),
+      React.createElement("button", { className: "btn btn-primary btn-sm", onClick: () => setShowUpload(true) }, "📁 사업부별 엑셀 업로드"),
+      React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: addFirm }, "+ 운용사 추가"),
+      React.createElement("div", { style: { flex: 1 } }),
+      React.createElement("span", { style: { fontSize: 10, color: "var(--t3)" } }, "입력 시 자동 저장됩니다")),
+    // 요약 카드
+    React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 } },
+      statCard("총 퇴직연금 합계", "₩ " + won(grandTotal), "#7C3AED", ym + " 기준"),
+      statCard("사업부 업로드 현황", deptFilled.length + "/" + PEN_DEPTS.length + " 완료",
+        deptFilled.length === PEN_DEPTS.length ? "#16A34A" : "#D97706",
+        PEN_DEPTS.map(d => d + (colSum(d) > 0 || uploaded[d] ? " ✓" : " ·")).join("  ")),
+      statCard("검증 상태", allDone ? "✅ 검증 완료" : "⚠️ 미완료", allDone ? "#16A34A" : "#DC2626",
+        allDone ? "모든 사업부 작성 완료" : "미작성: " + PEN_DEPTS.filter(d => !(colSum(d) > 0 || uploaded[d])).join(", "))),
+    // 매트릭스
+    React.createElement("div", { className: "card", style: { padding: 0 } },
+      React.createElement("div", { style: { overflowX: "auto", borderRadius: 12 } },
+        React.createElement("table", { className: "xtbl", style: { minWidth: 920 } },
+          React.createElement("thead", null, React.createElement("tr", null,
+            React.createElement("th", { style: { ...TH, minWidth: 130, textAlign: "left" } }, "운용사"),
+            PEN_DEPTS.map(d => React.createElement("th", { key: d, style: { ...TH, minWidth: 120 } },
+              React.createElement("div", null, d),
+              React.createElement("button", {
+                onClick: () => clearDept(d),
+                title: d + " 사업부 데이터 삭제",
+                style: { marginTop: 3, fontSize: 9, padding: "1px 7px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", border: "1px solid rgba(255,255,255,.45)", background: "rgba(255,255,255,.12)", color: "#fff", fontWeight: 700 }
+              }, "🗑️ 삭제"))),
+            React.createElement("th", { style: { ...TH, minWidth: 120, background: "#4F46E5" } }, "합계"),
+            React.createElement("th", { style: { ...TH, minWidth: 160, textAlign: "left" } }, "비고"),
+            React.createElement("th", { style: { ...TH, minWidth: 40 } }, "관리"))),
+          React.createElement("tbody", null,
+            firms.map(f => React.createElement("tr", { key: f },
+              React.createElement("td", { style: { ...TD, fontWeight: 700, whiteSpace: "normal", wordBreak: "break-all" } },
+                React.createElement("input", {
+                  defaultValue: f,
+                  key: f,
+                  title: "운용사명 수정 (Enter 또는 포커스 해제 시 저장)",
+                  onBlur: e => renameFirm(f, e.target.value),
+                  onKeyDown: e => { if (e.key === "Enter") e.target.blur(); },
+                  style: { width: "100%", border: "1px solid transparent", borderRadius: 6, padding: "3px 6px", fontSize: 11.5, fontWeight: 700, fontFamily: "inherit", background: "transparent", boxSizing: "border-box", color: "var(--text)" },
+                  onFocus: e => { e.target.style.border = "1px solid var(--border2)"; e.target.style.background = "#fff"; },
+                  onMouseDown: e => {}
+                })),
+              PEN_DEPTS.map(d => {
+                const v = getCell(f, d);
+                const empty = !v;
+                return React.createElement("td", { key: d, style: { ...TD, background: empty ? "#FEF9C3" : "transparent", textAlign: "right" } },
+                  React.createElement("input", {
+                    value: v ? won(v) : "",
+                    placeholder: "0",
+                    onChange: e => setCell(f, d, e.target.value),
+                    style: { width: "100%", border: "1px solid " + (empty ? "#FDE68A" : "var(--border2)"), borderRadius: 6, padding: "3px 6px", fontSize: 11, textAlign: "right", fontFamily: "'DM Mono',monospace", background: "#fff", boxSizing: "border-box" }
+                  }));
+              }),
+              React.createElement("td", { style: { ...TD, textAlign: "right", fontWeight: 800, fontFamily: "'DM Mono',monospace", background: "#EEF2FF", color: "#4F46E5" } }, won(rowSum(f))),
+              React.createElement("td", { style: TD }, React.createElement("input", {
+                value: notes[penNormFirm(f)] || "",
+                placeholder: "예: HR 별도 입금처리",
+                onChange: e => setNote(f, e.target.value),
+                style: { width: "100%", border: "1px solid var(--border2)", borderRadius: 6, padding: "3px 6px", fontSize: 11, fontFamily: "inherit", boxSizing: "border-box" }
+              })),
+              React.createElement("td", { style: { ...TD, textAlign: "center" } }, React.createElement(DelBtn, { onClick: () => delFirm(f) })))),
+            // 합계 행
+            React.createElement("tr", null,
+              React.createElement("td", { style: { ...TD, fontWeight: 800, background: "#F1F5F9" } }, "합계"),
+              PEN_DEPTS.map(d => React.createElement("td", {
+                key: d,
+                style: { ...TD, textAlign: "right", fontWeight: 800, fontFamily: "'DM Mono',monospace", background: "#F1F5F9" }
+              }, won(colSum(d)))),
+              React.createElement("td", { style: { ...TD, textAlign: "right", fontWeight: 800, fontFamily: "'DM Mono',monospace", background: "#4F46E5", color: "#fff" } }, won(grandTotal)),
+              React.createElement("td", { style: { ...TD, background: "#F1F5F9" } }, ""),
+              React.createElement("td", { style: { ...TD, background: "#F1F5F9" } }, ""))))),
+      React.createElement("div", {
+        style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderTop: "1px solid var(--border)", flexWrap: "wrap" }
+      }, React.createElement("button", { className: "btn btn-primary btn-sm", onClick: addFirm }, "+ 운용사 추가"),
+        React.createElement("span", { style: { fontSize: 10.5, color: "var(--t3)" } },
+          "운용사명은 셀을 클릭해 바로 수정할 수 있고, 엑셀 업로드 시 없는 운용사는 자동으로 행이 추가됩니다."))),
+    showUpload && React.createElement(PenUploadModal, {
+      onClose: () => setShowUpload(false),
+      onUploaded: applyUpload
+    }));
+}
 function Dashboard() {
   const saved = lsGet();
   if (saved) {
@@ -8605,6 +8928,10 @@ function Dashboard() {
     key: "transfer",
     label: "이체 금액 관리",
     icon: "₩"
+  }, {
+    key: "pension",
+    label: "퇴직연금 검증",
+    icon: "◈"
   }];
   const PMETA = {
     home: {
@@ -8634,6 +8961,10 @@ function Dashboard() {
     transfer: {
       title: "이체 금액 관리",
       sub: "사업부별 자금 이체 내역 · 출금건수/금액 집계 · 결재 관리"
+    },
+    pension: {
+      title: "퇴직연금 검증",
+      sub: "사업부별 운용사 금액 매트릭스 · 엑셀 업로드 자동 채우기 · 합계 검증"
     }
   };
   return React.createElement("div", {
@@ -8937,6 +9268,8 @@ function Dashboard() {
   }), page === "transfer" && React.createElement(PageTransfer, {
     cloudRev: cloudRev,
     adminName: adminName
+  }), page === "pension" && React.createElement(PagePension, {
+    cloudRev: cloudRev
   })))))), modal === "employee" && React.createElement(Modal, {
     title: "\uC9C1\uC6D0 \uCD94\uAC00",
     sub: "\uCD94\uAC00 \uC989\uC2DC \uC77C\uC815\uC774 \uC790\uB3D9 \uC0DD\uC131\uB429\uB2C8\uB2E4.",
