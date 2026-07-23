@@ -4685,196 +4685,42 @@ function PageTeam({
     }
   }, "\uD300\uC6D0 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")))));
 }
-// ===== [업무 이력] 구분(D열)별 검증 기안 체크리스트 =====
-// 저장: hr_store 컬렉션 (팀 공유 + localStorage 자동 미러)
-//   histTmpl   : { 구분명: [문서명, ...] }            ← 템플릿(추가/수정/삭제 가능)
-//   histChecks : { rowIndex: { v1:{문서:true}, v2:{문서:true} } }  ← 행별 체크 상태
-const HIST_TMPL_KEY = "histTmpl";
-const HIST_CHECK_KEY = "histChecks";
-const HIST_TMPL_DEFAULT = {
-  "입사": ["입퇴사자 공유", "HR DATA", "채용품의서", "근로계약서", "연봉계약서"],
-  "퇴사": ["입퇴사자 공유", "HR DATA", "사직서", "퇴직합의서"],
-  "출산휴가": ["근태관리파트 엑셀", "휴직 신청서"],
-  "육아휴직": ["근태관리파트 엑셀", "휴직 신청서"],
-  "육아기간 단축근로": ["근태관리파트 엑셀", "휴직 신청서"],
-  "기타휴직": ["근태관리파트 엑셀", "휴직 신청서"],
-  "청원": ["휴직신청서", "휴가 신청서 기안"],
-  "보건휴가": ["휴직신청서", "휴가 신청서 기안"],
-  "연봉인상": ["신청서", "근로계약서", "연봉계약서"],
-  "계약 연장": ["신청서", "근로계약서", "연봉계약서"],
-  "고용형태 변경": ["신청서", "근로계약서", "연봉계약서"],
-  "당직수당": ["기안"],
-  "영업직(통신비)": ["기안"],
-  "생일": ["엑셀"],
-  "출산": ["엑셀"],
-  "명절상여": ["엑셀"],
-  "스팟보너스": ["기안", "지출결의서"],
-  "성과급(인센티브)": ["기안", "지출결의서"]
-};
-function loadHistTmpl() {
-  const t = SheetDB.get(HIST_TMPL_KEY);
-  return t && typeof t === "object" && !Array.isArray(t) && Object.keys(t).length ? t : { ...HIST_TMPL_DEFAULT };
-}
-function loadHistChecks() {
-  const c = SheetDB.get(HIST_CHECK_KEY);
-  return c && typeof c === "object" && !Array.isArray(c) ? c : {};
-}
-// 해당 행의 구분(D열)에 필요한 기안 문서 목록
-// 구(舊) 시스템에서 이미 검증 완료된 행인지 판정 (DB/시트 원본값 기준)
-//   "신하늬 확인 완료" 같은 문자열, true, "completed" 등 → 레거시 완료로 인정
-function histLegacyVerified(rawRowValue) {
-  if (rawRowValue === true) return true;
-  if (rawRowValue === "completed") return true;
-  if (typeof rawRowValue !== "string") return false;
-  const s = rawRowValue.trim();
-  if (!s) return false;
-  if (/미\s*완료|미검증|대기|없음/.test(s)) return false; // ★ "미완료"가 "완료"에 걸리는 오판 방지
-  return s.includes("완료") || s.includes("확인");
-}
-// 행/차수의 레거시 검증 여부: 원본 검증 필드(다양한 스키마 대응)를 폭넓게 확인
-function histLegacyOf(row, lv) {
-  if (!row) return false;
-  const raws = lv === "v1"
-    ? [row.verify1Done, row.verify1By, row.v1_status, row.verified1, row.verify1]
-    : [row.verify2Done, row.verify2By, row.v2_status, row.verified2, row.verify2];
-  return raws.some(v => histLegacyVerified(v));
-}
-function histDocsFor(tmpl, cls) {
-  const key = String(cls || "").trim();
-  const arr = tmpl && tmpl[key];
-  return Array.isArray(arr) ? arr : [];
-}
-// ⚙️ 검증 문서 설정 모달: 구분 선택 → 문서 추가/수정/삭제
-function HistTemplateModal({ tmpl, onSave, onClose, extraCls }) {
-  const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(tmpl || {})));
-  const clsList = [...new Set([...Object.keys(draft), ...(extraCls || [])])].filter(Boolean).sort();
-  const [sel, setSel] = useState(clsList[0] || "");
-  const [newCls, setNewCls] = useState("");
-  const [newDoc, setNewDoc] = useState("");
-  const docs = Array.isArray(draft[sel]) ? draft[sel] : [];
-  const setDocs = next => setDraft(p => ({ ...p, [sel]: next }));
-  return React.createElement(Modal, {
-    title: "⚙️ 검증 문서 설정",
-    onClose: onClose,
-    wide: true
-  }, React.createElement("div", { style: { display: "flex", gap: 14, minHeight: 300 } },
-    // 좌: 구분 목록
-    React.createElement("div", { style: { width: 180, borderRight: "1px solid var(--border)", paddingRight: 10, overflowY: "auto", maxHeight: 380 } },
-      clsList.map(c => React.createElement("div", {
-        key: c,
-        onClick: () => setSel(c),
-        style: { padding: "7px 9px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: sel === c ? 800 : 600, marginBottom: 3, background: sel === c ? "var(--sky-l)" : "transparent", color: sel === c ? "var(--sky-deep)" : "var(--t2)", display: "flex", justifyContent: "space-between", alignItems: "center" }
-      }, React.createElement("span", null, c), React.createElement("span", { style: { fontSize: 9.5, color: "var(--t3)" } }, (Array.isArray(draft[c]) ? draft[c].length : 0) + "건"))),
-      React.createElement("div", { style: { display: "flex", gap: 4, marginTop: 8 } },
-        React.createElement("input", { className: "inp", style: { fontSize: 11 }, placeholder: "구분 추가", value: newCls, onChange: e => setNewCls(e.target.value) }),
-        React.createElement("button", {
-          className: "btn btn-sm btn-primary",
-          onClick: () => { const v = newCls.trim(); if (!v) return; setDraft(p => ({ ...p, [v]: p[v] || [] })); setSel(v); setNewCls(""); }
-        }, "+"))),
-    // 우: 문서 목록 편집
-    React.createElement("div", { style: { flex: 1 } },
-      React.createElement("div", { style: { fontSize: 12, fontWeight: 800, marginBottom: 8, color: "var(--sky-deep)" } }, sel ? "[" + sel + "] 필수 기안 문서" : "구분을 선택하세요"),
-      sel && React.createElement("div", null,
-        docs.length === 0 ? React.createElement("div", { style: { fontSize: 11, color: "var(--t3)", padding: "10px 0" } }, "문서가 없습니다. 아래에서 추가하세요.") : null,
-        docs.map((d, i) => React.createElement("div", { key: i, style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 5 } },
-          React.createElement("span", { style: { fontSize: 10, color: "var(--t3)", width: 16 } }, i + 1),
-          React.createElement("input", {
-            className: "inp", style: { fontSize: 12 }, value: d,
-            onChange: e => { const n = docs.slice(); n[i] = e.target.value; setDocs(n); }
-          }),
-          React.createElement(DelBtn, { onClick: () => setDocs(docs.filter((_, j) => j !== i)) }))),
-        React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 10 } },
-          React.createElement("input", {
-            className: "inp", style: { fontSize: 12 }, placeholder: "문서명 입력 (예: 근로계약서)", value: newDoc,
-            onChange: e => setNewDoc(e.target.value),
-            onKeyDown: e => { if (e.key === "Enter") { const v = newDoc.trim(); if (v) { setDocs(docs.concat([v])); setNewDoc(""); } } }
-          }),
-          React.createElement("button", {
-            className: "btn btn-sm btn-primary",
-            onClick: () => { const v = newDoc.trim(); if (!v) return; setDocs(docs.concat([v])); setNewDoc(""); }
-          }, "+ 추가")),
-        React.createElement("button", {
-          className: "btn btn-ghost btn-sm", style: { marginTop: 14 },
-          onClick: () => { if (confirm("[" + sel + "] 구분을 템플릿에서 삭제할까요?")) { setDraft(p => { const n = { ...p }; delete n[sel]; return n; }); setSel(""); } }
-        }, "이 구분 삭제")))),
-    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 } },
-      React.createElement("button", {
-        className: "btn btn-ghost btn-sm",
-        onClick: () => { if (confirm("기본 템플릿으로 되돌릴까요?")) setDraft({ ...HIST_TMPL_DEFAULT }); }
-      }, "기본값 복원"),
-      React.createElement("div", { style: { display: "flex", gap: 8 } },
-        React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: onClose }, "취소"),
-        React.createElement("button", { className: "btn btn-primary btn-sm", onClick: () => onSave(draft) }, "저장"))));
-}
-// 검증 셀(K/L): 구분별 기안 문서 체크리스트 — 진행률 표시 + 클릭 시 인라인 체크리스트
-function HistVerifyCell({ lv, row, docs, checks, done, by, at, busy, open, locked, legacy, onOpen, onToggleDoc, onLegacyToggle, accent, accentBg, accentTxt, label }) {
-  const total = docs.length;
-  const cnt = docs.filter(d => checks[d]).length;
-  const pct = done || legacy ? 100 : total ? Math.round(cnt / total * 100) : 0;
-  const cellBg = done || legacy ? accentBg : locked ? "#F8FAFC" : "transparent";
-  // ★ 하위호환: 구 시스템에서 이미 검증된 행 → 체크리스트 미적용, "완료"로 잠금 표시(검증자/일시 보존)
-  if (legacy) {
-    return React.createElement("td", { style: { minWidth: 118, background: accentBg, verticalAlign: "top" } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-        React.createElement("span", {
-          style: { width: 16, height: 16, borderRadius: 4, background: accent, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
-        }, "✓"),
-        React.createElement("span", {
-          style: { fontSize: 10.5, fontWeight: 800, color: accentTxt }
-        }, label + "완료")),
-      by ? React.createElement("div", { style: { fontSize: 9.5, color: accentTxt, paddingLeft: 22, marginTop: 1 } }, String(by)) : null,
-      at ? React.createElement("div", { style: { fontSize: 8.5, color: "var(--t3)", paddingLeft: 22 } }, String(at).slice(0, 16)) : null);
-  }
-  // 템플릿이 없는 구분 → 기존 단일 체크박스 방식으로 동작(호환)
-  if (total === 0) {
-    return React.createElement("td", { style: { minWidth: 118, background: cellBg } },
-      React.createElement("button", {
-        onClick: () => { if (!locked) onLegacyToggle(); },
-        disabled: busy || locked,
-        style: { display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: locked ? "not-allowed" : "pointer", fontFamily: "inherit", padding: 0 }
-      }, React.createElement("span", {
-        style: { width: 16, height: 16, borderRadius: 4, border: "1.5px solid " + (done ? accent : "#CBD5E1"), background: done ? accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 800 }
-      }, done ? "✓" : ""), React.createElement("span", {
-        style: { fontSize: 10.5, fontWeight: 700, color: done ? accentTxt : "var(--t3)" }
-      }, busy ? "..." : done ? (by || label + "완료") : locked ? "대기" : "미완료")),
-      done && at ? React.createElement("div", { style: { fontSize: 9, color: "var(--t3)", paddingLeft: 22, marginTop: 2 } }, String(at).slice(0, 16)) : null);
-  }
-  return React.createElement("td", { style: { minWidth: 132, background: cellBg, verticalAlign: "top" } },
-    // 요약 버튼 (진행률 / 완료)
-    React.createElement("button", {
-      onClick: onOpen,
-      disabled: locked,
-      title: locked ? "1차 완료 후 가능" : "클릭하여 기안 문서 체크",
-      style: {
-        width: "100%", display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start",
-        border: "1px solid " + (done ? accent : locked ? "#E2E8F0" : "#CBD5E1"),
-        background: "#fff", borderRadius: 7, padding: "4px 6px",
-        cursor: locked ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: locked ? .55 : 1
-      }
-    }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, width: "100%" } },
-      React.createElement("span", {
-        style: { fontSize: 10, fontWeight: 800, color: done ? accentTxt : locked ? "#CBD5E1" : "var(--t2)" }
-      }, busy ? "..." : done ? label + "완료" : locked ? "대기" : cnt + "/" + total + " 완료"),
-      React.createElement("span", { style: { marginLeft: "auto", fontSize: 8, color: "var(--t3)" } }, open ? "▲" : "▼")),
-      // 진행 바
-      React.createElement("div", { style: { width: "100%", height: 4, borderRadius: 3, background: "#E2E8F0", overflow: "hidden" } },
-        React.createElement("div", { style: { width: pct + "%", height: "100%", background: done ? accent : "#93C5FD", transition: "width .15s" } })),
-      done && by ? React.createElement("div", { style: { fontSize: 9, color: accentTxt, fontWeight: 700 } }, by) : null,
-      done && at ? React.createElement("div", { style: { fontSize: 8.5, color: "var(--t3)" } }, String(at).slice(0, 16)) : null),
-    // 인라인 체크리스트
-    open && !locked ? React.createElement("div", {
-      style: { marginTop: 5, border: "1px solid " + accent + "55", borderRadius: 8, background: "#fff", padding: 6, boxShadow: "0 4px 12px rgba(0,0,0,.08)" }
-    }, docs.map(d => React.createElement("label", {
-      key: d,
-      style: { display: "flex", alignItems: "center", gap: 6, padding: "3px 4px", borderRadius: 5, cursor: "pointer", fontSize: 10.5, whiteSpace: "normal", wordBreak: "break-all" }
-    }, React.createElement("input", {
-      type: "checkbox",
-      checked: !!checks[d],
-      onChange: () => onToggleDoc(d),
-      style: { width: 13, height: 13, accentColor: accent, cursor: "pointer", flexShrink: 0 }
-    }), React.createElement("span", {
-      style: { color: checks[d] ? accentTxt : "var(--t2)", fontWeight: checks[d] ? 700 : 500, textDecoration: checks[d] ? "none" : "none" }
-    }, d)))) : null);
+function HistVerifyCell({ row, done, by, at, busy, locked, onToggle, accent, accentBg, accentTxt, label }) {
+  const cellBg = done ? accentBg : locked ? "#F8FAFC" : "transparent";
+  return React.createElement("td", {
+    style: { minWidth: 118, background: cellBg, verticalAlign: "top" }
+  }, React.createElement("select", {
+    value: done ? "done" : "undone",
+    disabled: busy || locked,
+    title: locked ? "1차 검증 완료 후 가능" : label + " 검증 상태 변경",
+    onChange: e => {
+      const next = e.target.value === "done";
+      if (next !== !!done) onToggle();
+    },
+    style: {
+      width: "100%",
+      fontSize: 10.5,
+      fontWeight: 700,
+      padding: "4px 6px",
+      borderRadius: 7,
+      fontFamily: "inherit",
+      cursor: busy || locked ? "not-allowed" : "pointer",
+      border: "1px solid " + (done ? accent : locked ? "#E2E8F0" : "#CBD5E1"),
+      background: "#fff",
+      color: done ? accentTxt : locked ? "#94A3B8" : "var(--t2)",
+      opacity: locked ? 0.6 : 1
+    }
+  }, React.createElement("option", { value: "undone" }, locked ? "\uB300\uAE30" : "\uBBF8\uC644\uB8CC"),
+    React.createElement("option", { value: "done" }, label + "\uC644\uB8CC")),
+    busy ? React.createElement("div", {
+      style: { fontSize: 9, color: "var(--t3)", marginTop: 2 }
+    }, "\uCC98\uB9AC \uC911...") : null,
+    done && by ? React.createElement("div", {
+      style: { fontSize: 9.5, color: accentTxt, fontWeight: 700, marginTop: 2 }
+    }, String(by)) : null,
+    done && at ? React.createElement("div", {
+      style: { fontSize: 8.5, color: "var(--t3)" }
+    }, String(at).slice(0, 16)) : null);
 }
 function PageHistory({
   adminName,
@@ -4889,58 +4735,6 @@ function PageHistory({
 }) {
   const [vLoad, setVLoad] = useState({});
   const [showUrlEdit, setShowUrlEdit] = useState(false);
-  // ===== 구분별 다중 기안 체크리스트 =====
-  const [histTmpl, setHistTmpl] = useState(() => loadHistTmpl());
-  const [histChecks, setHistChecks] = useState(() => loadHistChecks());
-  const [showTmplModal, setShowTmplModal] = useState(false);
-  const [openCell, setOpenCell] = useState(null); // "v1_12" 처럼 열린 체크리스트 셀
-  useSkipFirstEffect(() => {
-    setHistTmpl(loadHistTmpl());
-    setHistChecks(loadHistChecks());
-  }, [cloudRev]);
-  const saveTmpl = next => {
-    setHistTmpl(next);
-    SheetDB.pushNow(HIST_TMPL_KEY, next);
-    setShowTmplModal(false);
-  };
-  // 행/차수별 체크 상태 조회
-  const getChecks = (rowIndex, lv) => {
-    const r = histChecks[String(rowIndex)] || {};
-    return r[lv] || {};
-  };
-  const docsOfRow = row => histDocsFor(histTmpl, row.isReflected);
-  // ★ 하위호환: 신규 체크리스트 이력이 전혀 없는데 이미 검증 완료된 행 = 구 시스템 데이터
-  //    → 체크리스트를 생성/초기화하지 않고 "완료" 상태 그대로 잠금 렌더(검증자/일시 보존)
-  const isLegacyRow = (row, lv) => {
-    const hasNewChecks = Object.keys(getChecks(row.rowIndex, lv)).length > 0;
-    return !hasNewChecks && histLegacyOf(row, lv);
-  };
-  const doneCount = (row, lv) => {
-    const docs = docsOfRow(row);
-    const c = getChecks(row.rowIndex, lv);
-    return docs.filter(d => c[d]).length;
-  };
-  const allDone = (row, lv) => {
-    if (isLegacyRow(row, lv)) return true; // 레거시 완료 행은 카운트 우회
-    const docs = docsOfRow(row);
-    return docs.length > 0 && docs.every(d => getChecks(row.rowIndex, lv)[d]);
-  };
-  // 개별 문서 체크 토글 → 저장 + 전부 체크되면 해당 차수 '완료' 자동 반영(시트 연동 toggleV1/V2 재사용)
-  function toggleDoc(row, lv, doc) {
-    if (isLegacyRow(row, lv)) return; // ★ 기존 검증 기록 보호: 레거시 완료 행은 체크 변경 불가
-    const key = String(row.rowIndex);
-    const cur = getChecks(row.rowIndex, lv);
-    const nextLv = { ...cur };
-    if (nextLv[doc]) delete nextLv[doc]; else nextLv[doc] = true;
-    const next = { ...histChecks, [key]: { ...(histChecks[key] || {}), [lv]: nextLv } };
-    setHistChecks(next);
-    SheetDB.pushNow(HIST_CHECK_KEY, next);
-    // 완료 여부 재계산 → 행 상태(verify1Done/verify2Done)와 다르면 동기화 (모두 체크 시 자동 "1차완료")
-    const docs = docsOfRow(row);
-    const nowAll = docs.length > 0 && docs.every(d => nextLv[d]);
-    if (lv === "v1" && nowAll !== !!row.verify1Done) toggleV1(row);
-    if (lv === "v2" && nowAll !== !!row.verify2Done) toggleV2(row);
-  }
   const [fMonth, setFMonth] = useState([]); // A열 급여반영월 (다중)
   const [fMgr, setFMgr] = useState([]);     // C열 담당자 (다중)
   const [fRefl, setFRefl] = useState([]);   // D열 반영/구분 (다중)
@@ -5232,10 +5026,6 @@ function PageHistory({
       flex: 1
     }
   }), React.createElement("button", {
-    className: "btn btn-ghost btn-sm",
-    onClick: () => setShowTmplModal(true),
-    title: "구분별 필수 기안 문서 목록 관리"
-  }, "⚙️ 검증 문서 설정"), React.createElement("button", {
     className: "btn btn-ghost btn-sm",
     onClick: () => setShowUrlEdit(p => !p)
   }, "URL \uC124\uC815"), React.createElement("button", {
@@ -5557,49 +5347,30 @@ function PageHistory({
         wordBreak: "break-all"
       }
     }, fmtCell(row[c.key])))), React.createElement(HistVerifyCell, {
-      lv: "v1",
       row: row,
-      docs: docsOfRow(row),
-      checks: getChecks(row.rowIndex, "v1"),
-      legacy: isLegacyRow(row, "v1"),
       done: v1,
       by: row.verify1By,
       at: row.verify1At,
       busy: !!vLoad[v1k],
-      open: openCell === v1k,
-      onOpen: () => setOpenCell(openCell === v1k ? null : v1k),
-      onToggleDoc: doc => toggleDoc(row, "v1", doc),
-      onLegacyToggle: () => toggleV1(row),
+      onToggle: () => toggleV1(row),
       accent: "#6366F1",
       accentBg: "#EEF2FF",
       accentTxt: "#4F46E5",
-      label: "1차"
+      label: "1\uCC28"
     }), React.createElement(HistVerifyCell, {
-      lv: "v2",
       row: row,
-      docs: docsOfRow(row),
-      checks: getChecks(row.rowIndex, "v2"),
-      legacy: isLegacyRow(row, "v2"),
       done: v2,
       by: row.verify2By,
       at: row.verify2At,
       busy: !!vLoad[v2k],
-      open: openCell === v2k,
-      locked: !v1 && !isLegacyRow(row, "v1"),
-      onOpen: () => { if (!v1 && !isLegacyRow(row, "v1")) return; setOpenCell(openCell === v2k ? null : v2k); },
-      onToggleDoc: doc => toggleDoc(row, "v2", doc),
-      onLegacyToggle: () => toggleV2(row),
+      locked: !v1,
+      onToggle: () => toggleV2(row),
       accent: "#10B981",
       accentBg: "#ECFDF5",
       accentTxt: "#059669",
-      label: "2차"
+      label: "2\uCC28"
     }));
-  })))))), showTmplModal && React.createElement(HistTemplateModal, {
-    tmpl: histTmpl,
-    extraCls: reflOpts,
-    onSave: saveTmpl,
-    onClose: () => setShowTmplModal(false)
-  }));
+  })))))));
 }
 const MEMO_LS_KEY = "hr_shine_memos_v1";
 const MEMO_CATS = ["일반 메모", "노무/법적 이슈", "임직원 요청", "시스템 에러", "제도 변경"];
@@ -5656,6 +5427,7 @@ function PageMemo({
       return fresh;
     });
   }, [cloudRev]);
+  const [editId, setEditId] = useState(null); // 수정 중인 메모 id (null이면 신규 등록)
   function addMemo() {
     if (!author.trim()) {
       setErr("작성자를 입력해주세요.");
@@ -5665,22 +5437,56 @@ function PageMemo({
       setErr("업무 내용을 입력해주세요.");
       return;
     }
-    const m = {
-      id: uid(),
-      author: author.trim(),
-      cat,
-      date,
-      content: content.trim(),
-      remark: remark.trim(),
-      createdAt: nowIso()
-    };
-    setMemos(p => [m, ...(p || [])]);
+    if (editId) {
+      // 수정 저장
+      setMemos(p => (p || []).map(m => m.id === editId ? {
+        ...m,
+        author: author.trim(),
+        cat,
+        date,
+        content: content.trim(),
+        remark: remark.trim(),
+        updatedAt: nowIso()
+      } : m));
+      setEditId(null);
+    } else {
+      const m = {
+        id: uid(),
+        author: author.trim(),
+        cat,
+        date,
+        content: content.trim(),
+        remark: remark.trim(),
+        createdAt: nowIso()
+      };
+      setMemos(p => [m, ...(p || [])]);
+    }
+    setContent("");
+    setRemark("");
+    setErr("");
+  }
+  // [수정] 클릭 → 해당 행 값을 상단 입력 폼으로 로드
+  function startEdit(m) {
+    setEditId(m.id);
+    setAuthor(m.author || "");
+    setCat(m.cat || MEMO_CATS[0]);
+    setDate(m.date || todayStr);
+    setContent(m.content || "");
+    setRemark(m.remark || "");
+    setErr("");
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {}
+  }
+  function cancelEdit() {
+    setEditId(null);
     setContent("");
     setRemark("");
     setErr("");
   }
   function delMemo(id) {
-    if (confirm("이 메모를 삭제할까요?")) setMemos(p => (p || []).filter(m => m.id !== id));
+    if (confirm("이 메모를 삭제할까요?")) {
+      setMemos(p => (p || []).filter(m => m.id !== id));
+      if (editId === id) cancelEdit();
+    }
   }
   const filtered = (memos || []).filter(m => {
     if (filterCat.length && filterCat.indexOf(String(m.cat || "").trim()) < 0) return false;       // 카테고리(다중 OR)
@@ -5835,12 +5641,16 @@ function PageMemo({
   }, err), React.createElement("div", {
     style: {
       display: "flex",
-      justifyContent: "flex-end"
+      justifyContent: "flex-end",
+      gap: 8
     }
-  }, React.createElement("button", {
+  }, editId && React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: cancelEdit
+  }, "\uCDE8\uC18C"), React.createElement("button", {
     className: "btn btn-primary",
     onClick: addMemo
-  }, "+ \uD2B9\uC774\uC0AC\uD56D \uB4F1\uB85D")))), React.createElement("div", {
+  }, editId ? "\uC218\uC815 \uC800\uC7A5" : "+ \uD2B9\uC774\uC0AC\uD56D \uB4F1\uB85D")))), React.createElement("div", {
     className: "card"
   }, React.createElement("div", {
     className: "card-hd"
@@ -6024,7 +5834,24 @@ function PageMemo({
       style: {
         textAlign: "center"
       }
+    }, React.createElement("div", {
+      style: { display: "inline-flex", gap: 4, alignItems: "center" }
     }, React.createElement("button", {
+      onClick: () => startEdit(m),
+      title: "이 특이사항 수정",
+      style: {
+        padding: "3px 9px",
+        borderRadius: 6,
+        border: "1px solid " + (editId === m.id ? "#2563EB" : "#93C5FD"),
+        background: editId === m.id ? "#2563EB" : "#EFF6FF",
+        color: editId === m.id ? "#fff" : "#2563EB",
+        cursor: "pointer",
+        fontSize: 10,
+        fontWeight: 700,
+        fontFamily: "inherit",
+        whiteSpace: "nowrap"
+      }
+    }, editId === m.id ? "수정 중" : "수정"), React.createElement("button", {
       onClick: () => delMemo(m.id),
       style: {
         width: 24,
@@ -6039,7 +5866,7 @@ function PageMemo({
         alignItems: "center",
         justifyContent: "center"
       }
-    }, "\xD7")));
+    }, "\xD7"))));
   })))))));
 }
 const GUIDE_LS_KEY = "hr_shine_guide_text";
@@ -8308,12 +8135,13 @@ function wonComma(v) {
   return isNaN(n) ? "0" : n.toLocaleString("ko-KR");
 }
 function PageTransfer({ cloudRev, adminName }) {
-  const [rows, setRows] = useState(() => loadTransfers());
-  const [monthF, setMonthF] = useState([]);     // 급여반영월 다중 선택 필터
-  const [editingId, setEditingId] = useState(null);
-  const fromCloud = useRef(false);
   const now = new Date();
   const defaultYM = now.getFullYear() + "." + String(now.getMonth() + 1).padStart(2, "0");
+  const [rows, setRows] = useState(() => loadTransfers());
+  // 초기 진입 시 당월만 표시(가독성). 드롭다운에서 전체/다른 월 선택은 자유.
+  const [monthF, setMonthF] = useState([defaultYM]);
+  const [editingId, setEditingId] = useState(null);
+  const fromCloud = useRef(false);
   // 저장: pushNow 로 즉시 영구 저장(새로고침 후에도 유지)
   const persist = next => {
     fromCloud.current = false;
@@ -8329,7 +8157,7 @@ function PageTransfer({ cloudRev, adminName }) {
       return fresh;
     });
   }, [cloudRev]);
-  const months = useMemo(() => [...new Set(rows.map(r => String(r.ym || "").trim()).filter(Boolean))].sort(), [rows]);
+  const months = useMemo(() => [...new Set([defaultYM, ...rows.map(r => String(r.ym || "").trim())])].filter(Boolean).sort(), [rows, defaultYM]);
   const filtered = useMemo(() => rows.filter(r => !monthF.length || monthF.indexOf(String(r.ym || "").trim()) >= 0), [rows, monthF]);
   const sumDept = new Set(filtered.map(r => String(r.dept || "").trim()).filter(Boolean)).size;
   const sumCount = filtered.reduce((a, r) => a + (Number(r.count) || 0), 0);
@@ -8369,7 +8197,7 @@ function PageTransfer({ cloudRev, adminName }) {
       style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }
     }, React.createElement(MultiSelect, { label: "급여반영월", color: "#4F46E5", options: months, selected: monthF, onChange: setMonthF }),
       React.createElement("button", { className: "btn btn-primary btn-sm", onClick: addRow }, "+ 행 추가"),
-      React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: () => setMonthF([]) }, "초기화"),
+      React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: () => setMonthF([defaultYM]), title: "당월 기준으로 초기화" }, "초기화"),
       React.createElement("div", { style: { flex: 1 } }),
       React.createElement("div", { style: { fontSize: 11, color: "var(--t3)" } }, "총 " + filtered.length + "건")),
     // 요약 카드
@@ -8991,7 +8819,7 @@ function Dashboard() {
       flexShrink: 0
     }
   }), "\uAD6C\uAE00 \uC2DC\uD2B8 \uBC14\uB85C\uAC00\uAE30"), React.createElement("a", {
-    href: "https://cocen365-my.sharepoint.com/:x:/p/hypark/IQCpMM2BnCQ-QbLcJbzovVffATSc8KaQliPoah0Ejl2xyUI?e=v3KrLT",
+    href: "https://cocen365-my.sharepoint.com/:x:/p/hypark/IQCF7YZ0WXQWRJ9IS7G0IiJsAUaklEfgSwDxtCUb0bmwd4A?e=1yUxyv",
     target: "_blank",
     rel: "noopener noreferrer",
     style: {
