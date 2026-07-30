@@ -501,8 +501,37 @@ const SheetDB = function () {
     let st;
     try { st = await fetchAll(); } catch (e) { return { ok: false, stage: "verify", msg: "확인용 읽기 실패: " + (e && e.message || e) }; }
     await upsert("__diag__", null);
-    if (st && st.__diag__ === token) return { ok: true, stage: "ok", msg: "✓ 정상입니다. Supabase 읽기/쓰기/실시간 동기화가 동작합니다." };
+    if (st && st.__diag__ === token) return { ok: true, stage: "ok", msg: "✓ 정상입니다. Supabase 읽기/쓰기/실시간 동기화가 동작합니다.\n\n" + storageReport() };
     return { ok: false, stage: "write", msg: "쓰기가 반영되지 않았습니다. RLS 정책(insert/update/select)을 다시 확인하세요." };
+  }
+  // 컬렉션별 저장 용량 리포트 (단일 행 한계에 근접했는지 진단)
+  function storageReport() {
+    const kb = obj => {
+      try { return (new Blob([JSON.stringify(obj)]).size / 1024); } catch (e) { return (JSON.stringify(obj || "").length / 1024); }
+    };
+    const rows = [];
+    ["tasks", "ts", "routines", "memos", "transfers", "pension", "histChecks", "team", "employees"].forEach(c => {
+      const v = STORE[c];
+      if (v == null) return;
+      const size = kb(v);
+      const cnt = Array.isArray(v) ? v.length : (typeof v === "object" ? Object.keys(v).length : 1);
+      rows.push({ c: c, size: size, cnt: cnt });
+    });
+    // cl/ins 는 월·키별로 나뉘어 저장되므로 합계만
+    let clKb = 0, insKb = 0;
+    Object.keys(STORE.cl || {}).forEach(k => clKb += kb(STORE.cl[k]));
+    Object.keys(STORE.ins || {}).forEach(k => insKb += kb(STORE.ins[k]));
+    if (clKb) rows.push({ c: "cl(체크리스트, 키별 분산)", size: clKb, cnt: Object.keys(STORE.cl || {}).length });
+    if (insKb) rows.push({ c: "ins(4대보험, 월별 분산)", size: insKb, cnt: Object.keys(STORE.ins || {}).length });
+    rows.sort((a, b) => b.size - a.size);
+    const totalKb = kb(STORE);
+    const lines = rows.map(r => {
+      const warn = (r.c === "tasks" || r.c === "ts") && r.size > 700 ? "  ⚠️ 큼" : (r.size > 900 ? "  ⚠️" : "");
+      return "  · " + r.c + ": " + r.size.toFixed(0) + " KB (" + r.cnt + "건)" + warn;
+    });
+    let head = "[저장 용량 진단]  전체 " + totalKb.toFixed(0) + " KB";
+    if (totalKb > 4500) head += "  ⚠️ 로컬 미러 5MB 한계 근접";
+    return head + "\n" + lines.join("\n") + "\n\n※ tasks/ts 가 한 행에 계속 쌓이면 저장이 실패할 수 있어요. 800KB↑면 월별 분할 저장을 권장합니다.";
   }
   // 내 로컬(STORE)의 모든 컬렉션을 서버로 강제 업로드 (서버가 비워졌을 때 복구용)
   async function forcePushAll(onProgress) {
@@ -549,6 +578,7 @@ const SheetDB = function () {
     pending: () => dirty.size,
     status: () => status,
     lastError: () => lastErr ? (lastErr.message || JSON.stringify(lastErr)) : "",
+    storageReport: () => storageReport(),
     storage: { url: SUPABASE_URL, key: SUPABASE_ANON_KEY, bucket: SUPA_BUCKET, client: SUPA, enabled: !!SUPA },
     STORE
   };
@@ -8729,6 +8759,19 @@ function Dashboard() {
       setTasks(pruned);
       try { SheetDB.pushNow("tasks", pruned); } catch (e) {}
     }
+    // 고아 ts 정리: 더 이상 존재하지 않는 task의 상태값 제거 → ts 저장 용량 축소
+    try {
+      const liveIds = new Set(pruned.map(t => t && t.id));
+      const curTs = tsRef.current || {};
+      const nextTs = {};
+      let removed = 0;
+      Object.keys(curTs).forEach(id => { if (liveIds.has(id)) nextTs[id] = curTs[id]; else removed++; });
+      if (removed > 0) {
+        tsRef.current = nextTs;
+        setTs(nextTs);
+        SheetDB.pushNow("ts", nextTs);
+      }
+    } catch (e) {}
   }, [tasks]);
   useEffect(() => {
     setTs(prev => {
