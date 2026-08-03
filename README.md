@@ -234,6 +234,7 @@ const SheetDB = function () {
     guide: null,
     adminName: null,
     cl: {},
+    tk: {},
     ins: {}
   };
   let ready = false,
@@ -271,7 +272,7 @@ const SheetDB = function () {
       if (sv.length === 0 && Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush(k, cur, k); return; }
       STORE[k] = sv;
     };
-    ["team", "employees", "tasks", "routines", "memos", "transfers"].forEach(healArr);
+    ["team", "employees", "routines", "memos", "transfers"].forEach(healArr);
     const healObj = (k) => {
       const sv = d[k], cur = STORE[k];
       if (!(sv && typeof sv === "object" && !Array.isArray(sv)) || dirty.has(k)) return;
@@ -303,6 +304,30 @@ const SheetDB = function () {
         STORE.ins[ym] = sv;
       });
     }
+    // tk: (월별 tasks) heal — ins 와 동일 패턴
+    if (d.tk && typeof d.tk === "object") {
+      Object.keys(STORE.tk).forEach(ym => {
+        if (!(ym in d.tk) && !dirty.has("tk:" + ym)) delete STORE.tk[ym];
+      });
+      Object.keys(d.tk).forEach(ym => {
+        if (dirty.has("tk:" + ym)) return;
+        const sv = d.tk[ym], cur = STORE.tk[ym];
+        if (Array.isArray(sv) && sv.length === 0 && Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush("tk:" + ym, cur, "tk:" + ym); return; }
+        STORE.tk[ym] = sv;
+      });
+    }
+    // tasks 뷰 재구성: tk 월별 조각을 합쳐 하나의 배열로. tk가 아직 없으면(레거시) 단일 tasks 행 사용.
+    if (Object.keys(STORE.tk).length > 0) {
+      const seen = new Set(), merged = [];
+      Object.keys(STORE.tk).forEach(ym => {
+        (Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : []).forEach(t => {
+          if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+        });
+      });
+      STORE.tasks = merged;
+    } else if (Array.isArray(d.tasks) && !dirty.has("tasks")) {
+      if (!(d.tasks.length === 0 && Array.isArray(STORE.tasks) && STORE.tasks.length > 0)) STORE.tasks = d.tasks;
+    }
   }
   /* ===== Supabase 연동 (Google Apps Script/시트 완전 대체) =====
    * 아래 두 값을 본인 Supabase 프로젝트 값으로 교체하세요:
@@ -319,13 +344,27 @@ const SheetDB = function () {
   const remoteListeners = new Set();
   // 행 목록 → {team,...,cl:{},ins:{}} 상태 객체로 조립
   function rowsToState(rows) {
-    const st = { cl: {}, ins: {} };
+    const st = { cl: {}, ins: {}, tk: {} };
     (rows || []).forEach(r => {
       const c = r.collection, v = r.value;
       if (c.indexOf("cl:") === 0) st.cl[c.slice(3)] = v;
       else if (c.indexOf("ins:") === 0) st.ins[c.slice(4)] = v;
+      else if (c.indexOf("tk:") === 0) st.tk[c.slice(3)] = v;
       else st[c] = v;
     });
+    // 월별 tk: 조각들 + (레거시) 단일 tasks 행을 합쳐 하나의 tasks 배열로 뷰 구성 (id 기준 dedup, tk 우선)
+    if (Object.keys(st.tk).length > 0) {
+      const seen = new Set(), merged = [];
+      Object.keys(st.tk).forEach(m => {
+        (Array.isArray(st.tk[m]) ? st.tk[m] : []).forEach(t => {
+          if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+        });
+      });
+      (Array.isArray(st.tasks) ? st.tasks : []).forEach(t => {
+        if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+      });
+      st.tasks = merged;
+    }
     return st;
   }
   async function fetchAll() {
@@ -396,6 +435,7 @@ const SheetDB = function () {
   function currentVal(c) {
     if (c.indexOf("cl:") === 0) return STORE.cl[c.slice(3)];
     if (c.indexOf("ins:") === 0) return STORE.ins[c.slice(4)];
+    if (c.indexOf("tk:") === 0) return STORE.tk[c.slice(3)];
     return STORE[c];
   }
   async function doPush(collection, key) {
@@ -430,6 +470,9 @@ const SheetDB = function () {
     } else if (collection.indexOf("ins:") === 0) {
       const ym = collection.slice(4);
       if (value === null) delete STORE.ins[ym];else STORE.ins[ym] = value;
+    } else if (collection.indexOf("tk:") === 0) {
+      const ym = collection.slice(3);
+      if (value === null) delete STORE.tk[ym];else STORE.tk[ym] = value;
     } else {
       STORE[collection] = value;
     }
@@ -443,6 +486,9 @@ const SheetDB = function () {
     } else if (collection.indexOf("ins:") === 0) {
       const ym = collection.slice(4);
       if (value === null) delete STORE.ins[ym];else STORE.ins[ym] = value;
+    } else if (collection.indexOf("tk:") === 0) {
+      const ym = collection.slice(3);
+      if (value === null) delete STORE.tk[ym];else STORE.tk[ym] = value;
     } else {
       STORE[collection] = value;
     }
@@ -472,6 +518,44 @@ const SheetDB = function () {
     if (timers[collection]) clearTimeout(timers[collection]);
     timers[collection] = setTimeout(() => doPush(collection, collection), 1500);
     return false;
+  }
+  // ===== tasks 월별 샤딩 저장 =====
+  //  tasks 배열을 t.due(YYYY-MM) 기준으로 월별 버킷(tk:YYYY-MM)에 나눠 저장.
+  //  → 한 행이 항상 작게 유지되어 용량 한계로 인한 저장 실패를 원천 차단.
+  let legacyTasksCleared = false;
+  function taskMonth(t) {
+    const m = /^(\d{4})[-.](\d{2})/.exec(String(t && t.due || ""));
+    return m ? m[1] + "-" + m[2] : "none";
+  }
+  function saveTasks(arr) {
+    const list = Array.isArray(arr) ? arr : [];
+    STORE.tasks = list;                 // 앱이 읽는 평면 뷰
+    // 월별 버킷 구성
+    const buckets = {};
+    list.forEach(t => {
+      if (!t || t.id == null) return;
+      const ym = taskMonth(t);
+      (buckets[ym] = buckets[ym] || []).push(t);
+    });
+    // 변경된 월만 저장, 비워진 월은 삭제
+    const prevMonths = Object.keys(STORE.tk || {});
+    const nextMonths = Object.keys(buckets);
+    const allMonths = new Set([...prevMonths, ...nextMonths]);
+    allMonths.forEach(ym => {
+      const nextArr = buckets[ym] || null;               // 없으면 삭제 대상
+      const prevArr = STORE.tk[ym];
+      const changed = JSON.stringify(prevArr || null) !== JSON.stringify(nextArr);
+      if (!changed) return;
+      if (nextArr) { STORE.tk[ym] = nextArr; } else { delete STORE.tk[ym]; }
+      if (ready) pushNow("tk:" + ym, nextArr);            // 실패해도 dirty 유지+재시도(엔진 내장)
+    });
+    writeMirror();
+    // 레거시 단일 tasks 행이 남아있으면 1회 정리(이관 완료). STORE.tasks(뷰)는 건드리지 않도록 서버 행만 삭제.
+    if (ready && !legacyTasksCleared) {
+      legacyTasksCleared = true;
+      try { upsert("tasks", null); } catch (e) {}
+    }
+    return true;
   }
   async function refresh() {
     try {
@@ -510,17 +594,19 @@ const SheetDB = function () {
       try { return (new Blob([JSON.stringify(obj)]).size / 1024); } catch (e) { return (JSON.stringify(obj || "").length / 1024); }
     };
     const rows = [];
-    ["tasks", "ts", "routines", "memos", "transfers", "pension", "histChecks", "team", "employees"].forEach(c => {
+    ["ts", "routines", "memos", "transfers", "pension", "histChecks", "team", "employees"].forEach(c => {
       const v = STORE[c];
       if (v == null) return;
       const size = kb(v);
       const cnt = Array.isArray(v) ? v.length : (typeof v === "object" ? Object.keys(v).length : 1);
       rows.push({ c: c, size: size, cnt: cnt });
     });
-    // cl/ins 는 월·키별로 나뉘어 저장되므로 합계만
-    let clKb = 0, insKb = 0;
+    // cl/ins/tk 는 키·월별로 나뉘어 저장되므로 합계만
+    let clKb = 0, insKb = 0, tkKb = 0;
     Object.keys(STORE.cl || {}).forEach(k => clKb += kb(STORE.cl[k]));
     Object.keys(STORE.ins || {}).forEach(k => insKb += kb(STORE.ins[k]));
+    Object.keys(STORE.tk || {}).forEach(k => tkKb += kb(STORE.tk[k]));
+    if (tkKb) rows.push({ c: "tk(달력 업무, 월별 분산)", size: tkKb, cnt: Object.keys(STORE.tk || {}).length + "개월" });
     if (clKb) rows.push({ c: "cl(체크리스트, 키별 분산)", size: clKb, cnt: Object.keys(STORE.cl || {}).length });
     if (insKb) rows.push({ c: "ins(4대보험, 월별 분산)", size: insKb, cnt: Object.keys(STORE.ins || {}).length });
     rows.sort((a, b) => b.size - a.size);
@@ -537,12 +623,13 @@ const SheetDB = function () {
   async function forcePushAll(onProgress) {
     if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
     const jobs = [];
-    ["team", "employees", "tasks", "ts", "routines", "memos", "transfers", "pension", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
+    ["team", "employees", "ts", "routines", "memos", "transfers", "pension", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
       const v = STORE[c];
       if (v !== null && v !== undefined) jobs.push([c, v]);
     });
     Object.keys(STORE.cl || {}).forEach(k => jobs.push(["cl:" + k, STORE.cl[k]]));
     Object.keys(STORE.ins || {}).forEach(ym => jobs.push(["ins:" + ym, STORE.ins[ym]]));
+    Object.keys(STORE.tk || {}).forEach(ym => jobs.push(["tk:" + ym, STORE.tk[ym]]));
     let done = 0, fail = 0;
     for (const [c, v] of jobs) {
       let ok = false;
@@ -558,6 +645,8 @@ const SheetDB = function () {
     boot,
     refresh,
     setCollection,
+    saveTasks: arr => saveTasks(arr),
+    getTasks: () => STORE.tasks || [],
     pushNow,
     diagnose,
     gasRun,
@@ -8666,7 +8755,7 @@ function Dashboard() {
     tsRef.current = nextTs;
     setTasks(nextTasks);
     setTs(nextTs);
-    SheetDB.setCollection("tasks", nextTasks);
+    SheetDB.saveTasks(nextTasks);
     SheetDB.setCollection("ts", nextTs);
   }, []);
   useSkipFirstEffect(() => {
@@ -8676,7 +8765,7 @@ function Dashboard() {
     SheetDB.setCollection("employees", employees);
   }, [employees]);
   useSkipFirstEffect(() => {
-    SheetDB.setCollection("tasks", tasks);
+    SheetDB.saveTasks(tasks);
   }, [tasks]);
   useSkipFirstEffect(() => {
     SheetDB.setCollection("ts", ts);
@@ -8757,8 +8846,9 @@ function Dashboard() {
     if (pruned.length !== arr.length) {
       tasksRef.current = pruned;
       setTasks(pruned);
-      try { SheetDB.pushNow("tasks", pruned); } catch (e) {}
     }
+    // 레거시 단일 tasks 행 → tk:YYYY-MM 월별 샤딩으로 1회 이관(변경 없으면 사실상 무동작)
+    try { SheetDB.saveTasks(pruned); } catch (e) {}
     // 고아 ts 정리: 더 이상 존재하지 않는 task의 상태값 제거 → ts 저장 용량 축소
     try {
       const liveIds = new Set(pruned.map(t => t && t.id));
