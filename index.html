@@ -304,16 +304,29 @@ const SheetDB = function () {
         STORE.ins[ym] = sv;
       });
     }
-    // tk: (월별 tasks) heal — ins 와 동일 패턴
+    // tk: (월별 tasks) heal
     if (d.tk && typeof d.tk === "object") {
       Object.keys(STORE.tk).forEach(ym => {
-        if (!(ym in d.tk) && !dirty.has("tk:" + ym)) delete STORE.tk[ym];
+        if (ym in d.tk) return;
+        if (dirty.has("tk:" + ym)) return;
+        const cur = STORE.tk[ym];
+        // ★ 서버엔 없지만 로컬에 내용이 있는 달 → 삭제하지 말고 서버로 복구(유실 방지).
+        //    (실제로 비운 달은 saveTasks 가 null 을 올려 서버 행을 지우므로, 여기 오는 건 '미저장'된 달)
+        if (Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush("tk:" + ym, cur, "tk:" + ym); }
+        else delete STORE.tk[ym];
       });
       Object.keys(d.tk).forEach(ym => {
         if (dirty.has("tk:" + ym)) return;
-        const sv = d.tk[ym], cur = STORE.tk[ym];
-        if (Array.isArray(sv) && sv.length === 0 && Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush("tk:" + ym, cur, "tk:" + ym); return; }
-        STORE.tk[ym] = sv;
+        const sv = Array.isArray(d.tk[ym]) ? d.tk[ym] : [];
+        const cur = Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : [];
+        // ★ 유실 방지 원칙: 동기화는 '서버 ∪ 로컬'(id 기준 합집합)로만 반영 — 로컬 일정을 절대 빼지 않음.
+        const seen = new Set(), merged = [];
+        sv.forEach(t => { if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); } });
+        let addedLocal = false;
+        cur.forEach(t => { if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); addedLocal = true; } });
+        STORE.tk[ym] = merged;
+        // 로컬에만 있던 항목이 있으면 서버에도 반영(복구)
+        if (addedLocal && ready) schedulePush("tk:" + ym, merged, "tk:" + ym);
       });
     }
     // tasks 뷰 재구성: tk 월별 조각을 합쳐 하나의 배열로. tk가 아직 없으면(레거시) 단일 tasks 행 사용.
@@ -523,6 +536,7 @@ const SheetDB = function () {
   //  tasks 배열을 t.due(YYYY-MM) 기준으로 월별 버킷(tk:YYYY-MM)에 나눠 저장.
   //  → 한 행이 항상 작게 유지되어 용량 한계로 인한 저장 실패를 원천 차단.
   let legacyTasksCleared = false;
+  let tasksMigrated = false;
   function taskMonth(t) {
     const m = /^(\d{4})[-.](\d{2})/.exec(String(t && t.due || ""));
     return m ? m[1] + "-" + m[2] : "none";
@@ -537,7 +551,8 @@ const SheetDB = function () {
       const ym = taskMonth(t);
       (buckets[ym] = buckets[ym] || []).push(t);
     });
-    // 변경된 월만 저장, 비워진 월은 삭제
+    // 변경된 월만 저장, 비워진 월은 삭제. 단, 첫 실행(마이그레이션/복구)은 모든 달을 강제 업로드.
+    const firstRun = ready && !tasksMigrated;
     const prevMonths = Object.keys(STORE.tk || {});
     const nextMonths = Object.keys(buckets);
     const allMonths = new Set([...prevMonths, ...nextMonths]);
@@ -545,10 +560,11 @@ const SheetDB = function () {
       const nextArr = buckets[ym] || null;               // 없으면 삭제 대상
       const prevArr = STORE.tk[ym];
       const changed = JSON.stringify(prevArr || null) !== JSON.stringify(nextArr);
-      if (!changed) return;
+      if (!changed && !firstRun) return;                 // 첫 실행이면 변경 없어도 업로드(로컬 전용 달 복구)
       if (nextArr) { STORE.tk[ym] = nextArr; } else { delete STORE.tk[ym]; }
       if (ready) pushNow("tk:" + ym, nextArr);            // 실패해도 dirty 유지+재시도(엔진 내장)
     });
+    if (firstRun) tasksMigrated = true;
     writeMirror();
     // 레거시 단일 tasks 행이 남아있으면 1회 정리(이관 완료). STORE.tasks(뷰)는 건드리지 않도록 서버 행만 삭제.
     if (ready && !legacyTasksCleared) {
@@ -8709,6 +8725,51 @@ function PagePension({ cloudRev }) {
       onUploaded: applyUpload
     }));
 }
+function RecoverTasksModal({ currentTasks, onImport, onClose }) {
+  const [txt, setTxt] = useState("");
+  const [msg, setMsg] = useState("");
+  function parseTasks(raw) {
+    let data = JSON.parse(raw);
+    if (Array.isArray(data)) return data;                       // tasks 배열
+    if (data && Array.isArray(data.tasks)) return data.tasks;    // 미러 전체(STORE)
+    if (data && data.tk && typeof data.tk === "object") {        // tk 월별 객체
+      const out = [];
+      Object.keys(data.tk).forEach(m => (Array.isArray(data.tk[m]) ? data.tk[m] : []).forEach(t => out.push(t)));
+      return out;
+    }
+    throw new Error("tasks 데이터를 찾을 수 없습니다.");
+  }
+  function doImport() {
+    let imported;
+    try { imported = parseTasks(txt.trim()); }
+    catch (e) { setMsg("JSON 파싱 실패: " + (e && e.message || e)); return; }
+    const cur = currentTasks || [];
+    const ids = new Set(cur.map(t => t && t.id));
+    const add = imported.filter(t => t && t.id != null && !ids.has(t.id));
+    if (add.length === 0) { setMsg("추가할 새 업무가 없습니다. (이미 모두 있거나 데이터가 비어 있음)"); return; }
+    onImport(cur.concat(add), add.length);
+  }
+  return React.createElement(Modal, {
+    title: "🛟 업무 복구 (가져오기)",
+    sub: "예전 화면(v15)에 남아있는 업무를 붙여넣어 현재 달력으로 복구합니다.",
+    onClose: onClose,
+    wide: true
+  }, React.createElement("div", null,
+    React.createElement("div", { style: { fontSize: 11.5, color: "var(--t2)", lineHeight: 1.7, background: "var(--sky-l)", border: "1px solid var(--sky-m)", borderRadius: 8, padding: "10px 12px", marginBottom: 10 } },
+      React.createElement("b", null, "복구 방법"), React.createElement("br"),
+      "1) 예전 주소(hr-shine-desk.app 등 v15)를 같은 브라우저에서 엽니다.", React.createElement("br"),
+      "2) F12(개발자도구) → Application → Local Storage → 해당 사이트 →", React.createElement("br"),
+      "3) 키 ", React.createElement("code", null, "hr_shine_cloud_mirror_v2"), " 의 값을 통째로 복사해서 아래에 붙여넣고 [가져오기]."),
+    React.createElement("textarea", {
+      value: txt, onChange: e => setTxt(e.target.value),
+      placeholder: '여기에 붙여넣기 (예: {"tasks":[...]} 또는 [ ... ] )',
+      style: { width: "100%", minHeight: 160, fontSize: 11, fontFamily: "'DM Mono',monospace", padding: 10, border: "1px solid var(--border2)", borderRadius: 8, boxSizing: "border-box", resize: "vertical" }
+    }),
+    msg ? React.createElement("div", { style: { marginTop: 8, fontSize: 11.5, color: msg.indexOf("실패") >= 0 || msg.indexOf("없") >= 0 ? "#DC2626" : "#059669", fontWeight: 600 } }, msg) : null,
+    React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 } },
+      React.createElement("button", { className: "btn btn-ghost btn-sm", onClick: onClose }, "취소"),
+      React.createElement("button", { className: "btn btn-primary btn-sm", onClick: doImport }, "가져오기"))));
+}
 function Dashboard() {
   const saved = lsGet();
   if (saved) {
@@ -8788,7 +8849,13 @@ function Dashboard() {
     };
     setIfDiff(team, data.team, setTeam);
     setIfDiff(employees, data.employees, setEmployees);
-    setIfDiff(tasks, data.tasks, setTasks);
+    // ★ tasks 는 '로컬 ∪ 서버'(id 기준 합집합)로만 병합 — 동기화가 화면의 일정을 절대 지우지 않음.
+    if (Array.isArray(data.tasks)) {
+      const cur = tasks || [];
+      const seen = new Set(cur.map(t => t && t.id));
+      const add = data.tasks.filter(t => t && t.id != null && !seen.has(t.id));
+      if (add.length > 0) setTasks(cur.concat(add));
+    }
     setIfDiff(ts, data.ts, setTs);
     setIfDiff(routines, data.routines, setRoutines);
     if (data.gTmpl && typeof data.gTmpl === "object") setIfDiff(gTmpl, data.gTmpl, setGTmpl);
@@ -9318,6 +9385,14 @@ function Dashboard() {
       fontSize: 11,
       padding: "5px 12px"
     },
+    onClick: () => setModal("recover"),
+    title: "예전 화면(v15)에 남은 업무를 붙여넣어 복구"
+  }, "\uD83D\uDEDF \uC5C5\uBB34 \uBCF5\uAD6C"), React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      fontSize: 11,
+      padding: "5px 12px"
+    },
     onClick: () => setModal("routine")
   }, "\uC815\uAE30 \uC77C\uC815 \uAD00\uB9AC"), React.createElement("button", {
     className: "btn btn-ghost",
@@ -9499,6 +9574,16 @@ function Dashboard() {
       setTasks(p => (p || []).filter(t => !t.routineId));
       setToast("정기 일정 초기화 완료");
       setModal(null);
+    }
+  }), modal === "recover" && React.createElement(RecoverTasksModal, {
+    currentTasks: tasks || [],
+    onClose: () => setModal(null),
+    onImport: (merged, n) => {
+      tasksRef.current = merged;
+      setTasks(merged);
+      try { SheetDB.saveTasks(merged); } catch (e) {}
+      setModal(null);
+      setToast(n + "건 업무를 복구했습니다.");
     }
   }), toast && React.createElement(Toast, {
     msg: toast,
