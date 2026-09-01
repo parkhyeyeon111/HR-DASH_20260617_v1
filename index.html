@@ -387,17 +387,29 @@ const SheetDB = function () {
     return rowsToState(data);
   }
   let lastErr = null;
+  function jsonSize(v) {
+    try { return new Blob([JSON.stringify(v == null ? "" : v)]).size; } catch (e) { try { return JSON.stringify(v || "").length; } catch (_) { return 0; } }
+  }
   async function upsert(collection, value) {
     if (!SUPA) return false;
     if (value === null || value === undefined) {
       const { error } = await SUPA.from(SUPA_TABLE).delete().eq("collection", collection);
-      if (error) { lastErr = error; try { console.warn("[Supabase 삭제 실패]", collection, error.message || error); } catch (_) {} return false; }
+      if (error) { lastErr = error; try { console.error("[Supabase 삭제 실패]", { collection: collection, code: error.code, message: error.message || String(error), details: error.details }); } catch (_) {} return false; }
       return true;
     }
     const { error } = await SUPA.from(SUPA_TABLE).upsert({ collection: collection, value: value }, { onConflict: "collection" });
     if (error) {
       lastErr = error;
-      try { console.warn("[Supabase 저장 실패]", collection, error.message || error, error); } catch (_) {}
+      try {
+        console.error("[Supabase upsert 실패]", {
+          collection: collection,
+          code: error.code,
+          message: error.message || String(error),
+          details: error.details,
+          hint: error.hint,
+          payloadKB: (jsonSize(value) / 1024).toFixed(1)
+        });
+      } catch (_) {}
       return false;
     }
     lastErr = null;
@@ -442,40 +454,65 @@ const SheetDB = function () {
       return false;
     }
   }
-  const timers = {};
-  const retries = {};
-  // 현재 STORE의 최신 값(재시도 시 최신본을 올리기 위함)
+  const timers = {};     // key -> 디바운스 타이머
+  const retries = {};    // key -> 실패 재시도 횟수
+  const inflight = {};   // key -> 현재 upsert 진행중 여부(뮤텍스 락)
+  const rerun = {};      // key -> 진행중에 값이 또 바뀜(끝나면 최신값으로 1회 더)
   function currentVal(c) {
     if (c.indexOf("cl:") === 0) return STORE.cl[c.slice(3)];
     if (c.indexOf("ins:") === 0) return STORE.ins[c.slice(4)];
     if (c.indexOf("tk:") === 0) return STORE.tk[c.slice(3)];
     return STORE[c];
   }
-  async function doPush(collection, key) {
+  // 컬렉션(key)별 '순차 큐': 같은 key 에 대해 동시에 두 개의 upsert 가 나가지 않게 직렬화하고,
+  // 항상 STORE 의 '최신값'을 올린다(디바운스로 연속 수정 합침). 진행중 변경분은 완료 후 재실행.
+  async function runPush(collection, key) {
     if (timers[key]) { clearTimeout(timers[key]); delete timers[key]; }
+    if (inflight[key]) { rerun[key] = true; return; }   // 이미 저장 중 → 끝난 뒤 최신값으로
+    inflight[key] = true;
+    rerun[key] = false;
+    const val = currentVal(collection);                 // ★ 항상 최신값
+    const snapshot = JSON.stringify(val == null ? null : val);
     let ok = false;
-    try { ok = await upsert(collection, currentVal(collection)); } catch (e) { lastErr = e; ok = false; }
+    try {
+      ok = await upsert(collection, val);
+    } catch (e) {
+      lastErr = e; ok = false;
+      try { console.error("[workflow upsert 예외]", { collection: collection, message: e && e.message || String(e), payloadKB: (jsonSize(val) / 1024).toFixed(1) }); } catch (_) {}
+    }
+    inflight[key] = false;
     if (ok) {
       retries[key] = 0;
+      // 저장하는 사이 STORE 가 또 바뀌었으면(또는 rerun 표시) 최신값으로 한 번 더
+      const changedDuring = rerun[key] || JSON.stringify((currentVal(collection)) == null ? null : currentVal(collection)) !== snapshot;
+      if (changedDuring) {
+        rerun[key] = false;
+        timers[key] = setTimeout(() => runPush(collection, key), 0);
+        return;
+      }
       dirty.delete(key);
       emit(dirty.size === 0 ? "saved" : "saving");
     } else {
-      // ★ 저장 실패: dirty 를 '유지'해 로컬 미저장분이 서버 옛 데이터로 덮어써지지 않게 보호 + 자동 재시도
       const n = (retries[key] || 0) + 1;
       retries[key] = n;
       emit("error");
-      if (n <= 6) {
-        const delay = Math.min(1000 * Math.pow(2, n - 1), 20000);
-        timers[key] = setTimeout(() => doPush(collection, key), delay);
+      if (n <= 3) {                                      // 지수 백오프 3회
+        try { console.error("[workflow 저장 실패·재시도]", { collection: collection, attempt: n, of: 3, message: (lastErr && lastErr.message) || String(lastErr), code: lastErr && lastErr.code, payloadKB: (jsonSize(val) / 1024).toFixed(1) }); } catch (_) {}
+        const delay = Math.min(500 * Math.pow(2, n - 1), 8000);
+        timers[key] = setTimeout(() => runPush(collection, key), delay);
+      } else {
+        try { console.error("[workflow 저장 최종 실패 · 로컬 보존됨(다음 동기화 때 재시도)]", { collection: collection, message: (lastErr && lastErr.message) || String(lastErr), code: lastErr && lastErr.code, payloadKB: (jsonSize(val) / 1024).toFixed(1) }); } catch (_) {}
       }
+      // dirty 유지(로컬 보존) → 다음 수정/포커스 동기화 때 재시도됨
     }
   }
+  // 디바운스 예약(연속 수정 합침). 이미 저장 중이면 완료 후 최신값으로 재실행되도록 표시.
   function schedulePush(collection, value, key) {
     dirty.add(key);
-    retries[key] = 0;
     emit("saving");
+    if (inflight[key]) { rerun[key] = true; return; }
     if (timers[key]) clearTimeout(timers[key]);
-    timers[key] = setTimeout(() => doPush(collection, key), 450);
+    timers[key] = setTimeout(() => runPush(collection, key), 400);
   }
   function setCollection(collection, value) {
     if (collection.indexOf("cl:") === 0) {
@@ -489,10 +526,11 @@ const SheetDB = function () {
     } else {
       STORE[collection] = value;
     }
-    writeMirror();
+    writeMirror();                 // ★ 낙관적: 로컬/미러 즉시 반영
     if (!ready) return;
     schedulePush(collection, value, collection);
   }
+  // 즉시 저장 요청도 '큐'를 통과(직렬화). 낙관적으로 true 반환(실패는 큐가 재시도).
   async function pushNow(collection, value) {
     if (collection.indexOf("cl:") === 0) {
       STORE.cl[collection.slice(3)] = value;
@@ -505,32 +543,14 @@ const SheetDB = function () {
     } else {
       STORE[collection] = value;
     }
-    writeMirror();
+    writeMirror();                 // ★ 낙관적: 즉시 로컬 반영
     if (!ready) return false;
-    if (timers[collection]) {
-      clearTimeout(timers[collection]);
-      delete timers[collection];
-    }
     dirty.add(collection);
-    retries[collection] = 0;
     emit("saving");
-    let ok = false;
-    try {
-      ok = await upsert(collection, value);
-    } catch (e) {
-      lastErr = e;
-      ok = false;
-    }
-    if (ok) {
-      dirty.delete(collection);
-      emit(dirty.size === 0 ? "saved" : "saving");
-      return true;
-    }
-    // ★ 실패: dirty 유지(로컬 보존) + 배경 자동 재시도 + 에러 표시
-    emit("error");
-    if (timers[collection]) clearTimeout(timers[collection]);
-    timers[collection] = setTimeout(() => doPush(collection, collection), 1500);
-    return false;
+    if (inflight[collection]) { rerun[collection] = true; return true; }
+    if (timers[collection]) { clearTimeout(timers[collection]); delete timers[collection]; }
+    runPush(collection, collection);   // 직렬화 큐로 진입(내부에서 최신값 사용)
+    return true;
   }
   // ===== tasks 월별 샤딩 저장 =====
   //  tasks 배열을 t.due(YYYY-MM) 기준으로 월별 버킷(tk:YYYY-MM)에 나눠 저장.
@@ -562,7 +582,7 @@ const SheetDB = function () {
       const changed = JSON.stringify(prevArr || null) !== JSON.stringify(nextArr);
       if (!changed && !firstRun) return;                 // 첫 실행이면 변경 없어도 업로드(로컬 전용 달 복구)
       if (nextArr) { STORE.tk[ym] = nextArr; } else { delete STORE.tk[ym]; }
-      if (ready) pushNow("tk:" + ym, nextArr);            // 실패해도 dirty 유지+재시도(엔진 내장)
+      if (ready) schedulePush("tk:" + ym, nextArr, "tk:" + ym);   // 디바운스+직렬화 큐(연속 수정 합침, 최신값 보장)
     });
     if (firstRun) tasksMigrated = true;
     writeMirror();
@@ -8863,8 +8883,9 @@ function Dashboard() {
     setCloudRev(v => v + 1);
   }, [team, employees, tasks, ts, routines, gTmpl, adminName]);
   const syncFromCloud = useCallback(async () => {
-    if (SheetDB.pending() > 0) return;
+    if (SheetDB.pending() > 0) return;               // 저장 대기중이면 폴링 스킵
     const data = await SheetDB.refresh();
+    if (SheetDB.pending() > 0) return;               // ★ fetch 도중 로컬 수정 발생 → 이번 reconcile 건너뜀(덮어쓰기 방지)
     reconcile(data);
   }, [reconcile]);
   useEffect(() => {
