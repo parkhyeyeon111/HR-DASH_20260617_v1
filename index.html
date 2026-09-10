@@ -331,14 +331,12 @@ const SheetDB = function () {
         const sv = Array.isArray(d.tk[ym]) ? d.tk[ym] : [];
         const cur = Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : [];
         // ★ 유실 방지: '서버 ∪ 로컬'(id 합집합) — 단, 삭제 표시(tombstone)된 id 는 제외(되살아나지 않음)
+        //   재쓰기(schedulePush)는 하지 않음: tombstone 필터가 화면을 항상 깨끗하게 유지하고,
+        //   사용자가 다음에 그 달을 수정할 때 saveTasks 가 서버를 정리하므로 피드백 루프를 막는다.
         const seen = new Set(), merged = [];
         sv.forEach(t => { if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); } });
-        let addedLocal = false, purged = false;
-        cur.forEach(t => { if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); addedLocal = true; } });
-        // 서버에 tombstone 대상이 아직 남아있었으면 정리해서 다시 올림
-        if (sv.some(t => t && isDeleted(t.id))) purged = true;
+        cur.forEach(t => { if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); } });
         STORE.tk[ym] = merged;
-        if ((addedLocal || purged) && ready) schedulePush("tk:" + ym, merged, "tk:" + ym);
       });
     }
     // tasks 뷰 재구성: tk 월별 조각 합침 (tombstone 제외)
@@ -8936,10 +8934,9 @@ function Dashboard() {
     setCloudRev(v => v + 1);
   }, [team, employees, tasks, ts, routines, gTmpl, adminName]);
   const syncFromCloud = useCallback(async () => {
-    if (SheetDB.pending() > 0) return;               // 저장 대기중이면 폴링 스킵
+    if (SheetDB.pending() > 0) return;               // 저장 대기중이면 폴링 스킵(진행중 저장 보호)
     const data = await SheetDB.refresh();
-    if (SheetDB.pending() > 0) return;               // ★ fetch 도중 로컬 수정 발생 → 이번 reconcile 건너뜀(덮어쓰기 방지)
-    reconcile(data);
+    reconcile(data);                                  // reconcile 은 합집합+tombstone 필터라 로컬을 지우거나 삭제분을 되살리지 않음
   }, [reconcile]);
   useEffect(() => {
     const onFocus = () => syncFromCloud();
