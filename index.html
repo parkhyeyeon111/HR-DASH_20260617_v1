@@ -235,6 +235,7 @@ const SheetDB = function () {
     adminName: null,
     cl: {},
     tk: {},
+    tdel: {},
     ins: {}
   };
   let ready = false,
@@ -304,6 +305,14 @@ const SheetDB = function () {
         STORE.ins[ym] = sv;
       });
     }
+    // tdel(삭제 표시) 합집합 병합 — tombstone 은 절대 사라지지 않고 누적(삭제가 되살아나지 않게 함)
+    if (d.tdel && typeof d.tdel === "object" && !Array.isArray(d.tdel)) {
+      Object.keys(d.tdel).forEach(id => {
+        const sv = d.tdel[id], cur = STORE.tdel[id];
+        if (cur == null || (sv && sv > cur)) STORE.tdel[id] = sv;
+      });
+    }
+    const isDeleted = id => id != null && STORE.tdel[id] != null;
     // tk: (월별 tasks) heal
     if (d.tk && typeof d.tk === "object") {
       Object.keys(STORE.tk).forEach(ym => {
@@ -311,35 +320,39 @@ const SheetDB = function () {
         if (dirty.has("tk:" + ym)) return;
         const cur = STORE.tk[ym];
         // ★ 서버엔 없지만 로컬에 내용이 있는 달 → 삭제하지 말고 서버로 복구(유실 방지).
-        //    (실제로 비운 달은 saveTasks 가 null 을 올려 서버 행을 지우므로, 여기 오는 건 '미저장'된 달)
-        if (Array.isArray(cur) && cur.length > 0) { if (ready) schedulePush("tk:" + ym, cur, "tk:" + ym); }
-        else delete STORE.tk[ym];
+        if (Array.isArray(cur) && cur.length > 0) {
+          const kept = cur.filter(t => t && !isDeleted(t.id));
+          STORE.tk[ym] = kept;
+          if (ready) { if (kept.length > 0) schedulePush("tk:" + ym, kept, "tk:" + ym); else { delete STORE.tk[ym]; schedulePush("tk:" + ym, null, "tk:" + ym); } }
+        } else delete STORE.tk[ym];
       });
       Object.keys(d.tk).forEach(ym => {
         if (dirty.has("tk:" + ym)) return;
         const sv = Array.isArray(d.tk[ym]) ? d.tk[ym] : [];
         const cur = Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : [];
-        // ★ 유실 방지 원칙: 동기화는 '서버 ∪ 로컬'(id 기준 합집합)로만 반영 — 로컬 일정을 절대 빼지 않음.
+        // ★ 유실 방지: '서버 ∪ 로컬'(id 합집합) — 단, 삭제 표시(tombstone)된 id 는 제외(되살아나지 않음)
         const seen = new Set(), merged = [];
-        sv.forEach(t => { if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); } });
-        let addedLocal = false;
-        cur.forEach(t => { if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); addedLocal = true; } });
+        sv.forEach(t => { if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); } });
+        let addedLocal = false, purged = false;
+        cur.forEach(t => { if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); addedLocal = true; } });
+        // 서버에 tombstone 대상이 아직 남아있었으면 정리해서 다시 올림
+        if (sv.some(t => t && isDeleted(t.id))) purged = true;
         STORE.tk[ym] = merged;
-        // 로컬에만 있던 항목이 있으면 서버에도 반영(복구)
-        if (addedLocal && ready) schedulePush("tk:" + ym, merged, "tk:" + ym);
+        if ((addedLocal || purged) && ready) schedulePush("tk:" + ym, merged, "tk:" + ym);
       });
     }
-    // tasks 뷰 재구성: tk 월별 조각을 합쳐 하나의 배열로. tk가 아직 없으면(레거시) 단일 tasks 행 사용.
+    // tasks 뷰 재구성: tk 월별 조각 합침 (tombstone 제외)
     if (Object.keys(STORE.tk).length > 0) {
       const seen = new Set(), merged = [];
       Object.keys(STORE.tk).forEach(ym => {
         (Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : []).forEach(t => {
-          if (t && t.id != null && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+          if (t && t.id != null && !seen.has(t.id) && !isDeleted(t.id)) { seen.add(t.id); merged.push(t); }
         });
       });
       STORE.tasks = merged;
     } else if (Array.isArray(d.tasks) && !dirty.has("tasks")) {
-      if (!(d.tasks.length === 0 && Array.isArray(STORE.tasks) && STORE.tasks.length > 0)) STORE.tasks = d.tasks;
+      const filtered = d.tasks.filter(t => t && !isDeleted(t.id));
+      if (!(filtered.length === 0 && Array.isArray(STORE.tasks) && STORE.tasks.length > 0)) STORE.tasks = filtered;
     }
   }
   /* ===== Supabase 연동 (Google Apps Script/시트 완전 대체) =====
@@ -562,12 +575,12 @@ const SheetDB = function () {
     return m ? m[1] + "-" + m[2] : "none";
   }
   function saveTasks(arr) {
-    const list = Array.isArray(arr) ? arr : [];
+    const raw = Array.isArray(arr) ? arr : [];
+    const list = raw.filter(t => t && t.id != null && STORE.tdel[t.id] == null); // 삭제 표시된 id 제외
     STORE.tasks = list;                 // 앱이 읽는 평면 뷰
     // 월별 버킷 구성
     const buckets = {};
     list.forEach(t => {
-      if (!t || t.id == null) return;
       const ym = taskMonth(t);
       (buckets[ym] = buckets[ym] || []).push(t);
     });
@@ -591,6 +604,38 @@ const SheetDB = function () {
       legacyTasksCleared = true;
       try { upsert("tasks", null); } catch (e) {}
     }
+    return true;
+  }
+  // 업무 삭제: tombstone(삭제 표시) 기록 후 tk 에서 제거하고 저장 → 합집합 병합에도 되살아나지 않음
+  function deleteTasks(ids) {
+    const arr = Array.isArray(ids) ? ids : [ids];
+    const now = Date.now();
+    const idset = new Set(arr);
+    // 삭제 대상 task 객체를 찾아 routineKey 도 함께 tombstone (정기 일정 재생성 방지)
+    const byId = {};
+    (STORE.tasks || []).forEach(t => { if (t && idset.has(t.id)) byId[t.id] = t; });
+    Object.keys(STORE.tk || {}).forEach(ym => (Array.isArray(STORE.tk[ym]) ? STORE.tk[ym] : []).forEach(t => { if (t && idset.has(t.id)) byId[t.id] = t; }));
+    let touched = false;
+    arr.forEach(id => {
+      if (id == null) return;
+      STORE.tdel[id] = now; touched = true;
+      const t = byId[id];
+      if (t && t.routineKey) STORE.tdel["rk:" + t.routineKey] = now;   // 정기 일정 키도 삭제 표시
+    });
+    if (!touched) return true;
+    const cutoff = now - 180 * 24 * 3600 * 1000;
+    Object.keys(STORE.tdel).forEach(id => { if (STORE.tdel[id] < cutoff) delete STORE.tdel[id]; });
+    Object.keys(STORE.tk).forEach(ym => {
+      const cur = STORE.tk[ym];
+      if (!Array.isArray(cur)) return;
+      if (!cur.some(t => t && idset.has(t.id))) return;
+      const kept = cur.filter(t => t && !idset.has(t.id));
+      if (kept.length > 0) STORE.tk[ym] = kept; else delete STORE.tk[ym];
+      if (ready) schedulePush("tk:" + ym, kept.length > 0 ? kept : null, "tk:" + ym);
+    });
+    STORE.tasks = (STORE.tasks || []).filter(t => t && !idset.has(t.id));
+    writeMirror();
+    if (ready) schedulePush("tdel", STORE.tdel, "tdel");
     return true;
   }
   async function refresh() {
@@ -659,7 +704,7 @@ const SheetDB = function () {
   async function forcePushAll(onProgress) {
     if (!ready) return { ok: false, msg: "아직 초기화 전입니다. 잠시 후 다시 시도하세요." };
     const jobs = [];
-    ["team", "employees", "ts", "routines", "memos", "transfers", "pension", "histTmpl", "histChecks", "gTmpl", "guide", "adminName"].forEach(c => {
+    ["team", "employees", "ts", "routines", "memos", "transfers", "pension", "histTmpl", "histChecks", "tdel", "gTmpl", "guide", "adminName"].forEach(c => {
       const v = STORE[c];
       if (v !== null && v !== undefined) jobs.push([c, v]);
     });
@@ -682,6 +727,8 @@ const SheetDB = function () {
     refresh,
     setCollection,
     saveTasks: arr => saveTasks(arr),
+    deleteTasks: ids => deleteTasks(ids),
+    isDeleted: id => STORE.tdel[id] != null,
     getTasks: () => STORE.tasks || [],
     pushNow,
     diagnose,
@@ -994,6 +1041,7 @@ function expandRoutine(routine, existing, team) {
     tIds.forEach(mid => {
       const k = `${rId}_${due}_${mid}`;
       if (exKeys.has(k)) return;
+      if (SheetDB.isDeleted && SheetDB.isDeleted("rk:" + k)) return;   // 삭제된 정기 일정은 재생성 안 함
       res.push({
         id: uid(),
         task,
@@ -8869,12 +8917,17 @@ function Dashboard() {
     };
     setIfDiff(team, data.team, setTeam);
     setIfDiff(employees, data.employees, setEmployees);
-    // ★ tasks 는 '로컬 ∪ 서버'(id 기준 합집합)로만 병합 — 동기화가 화면의 일정을 절대 지우지 않음.
+    // ★ tasks: 삭제 표시(tombstone) 제거 + '로컬 ∪ 서버' 합집합 — 삭제는 확실히 반영, 그 외 유실 0
     if (Array.isArray(data.tasks)) {
-      const cur = tasks || [];
-      const seen = new Set(cur.map(t => t && t.id));
-      const add = data.tasks.filter(t => t && t.id != null && !seen.has(t.id));
-      if (add.length > 0) setTasks(cur.concat(add));
+      const del = SheetDB.isDeleted || (() => false);
+      setTasks(prev => {
+        const keptPrev = (prev || []).filter(t => t && !del(t.id));
+        const ids = new Set(keptPrev.map(t => t && t.id));
+        const add = (data.tasks || []).filter(t => t && t.id != null && !ids.has(t.id) && !del(t.id));
+        const removed = (prev || []).length - keptPrev.length;
+        if (add.length === 0 && removed === 0) return prev;
+        return keptPrev.concat(add);
+      });
     }
     setIfDiff(ts, data.ts, setTs);
     setIfDiff(routines, data.routines, setRoutines);
@@ -8984,6 +9037,8 @@ function Dashboard() {
     };
   }, [commitTasks]);
   const onDelete = useCallback(id => {
+    try { SheetDB.deleteTasks([id]); } catch (e) {}   // 삭제 표시(tombstone) 기록 + 서버 반영 → 되살아나지 않음
+    tasksRef.current = (tasksRef.current || []).filter(t => t.id !== id);
     setTasks(p => p.filter(t => t.id !== id));
     setTs(p => {
       const s = {
