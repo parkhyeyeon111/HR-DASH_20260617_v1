@@ -372,7 +372,7 @@ const SheetDB = function () {
     (rows || []).forEach(r => {
       const c = r.collection, v = r.value;
       if (c.indexOf("cl:") === 0) st.cl[c.slice(3)] = v;
-      else if (c.indexOf("ins:") === 0) st.ins[c.slice(4)] = v;
+      else if (c.indexOf("ins:") === 0) st.ins[c.slice(4)] = insDecode(v);
       else if (c.indexOf("tk:") === 0) st.tk[c.slice(3)] = v;
       else st[c] = v;
     });
@@ -391,6 +391,49 @@ const SheetDB = function () {
     }
     return st;
   }
+  // ===== 4대보험(ins) 저장 압축 코덱 =====
+  //  pub/pay 행의 긴 키 이름을 짧게(저장/전송 크기 축소). STORE·화면은 항상 '원본(full)' 형태로만 다루고,
+  //  서버로 올릴 때 encode, 서버에서 받을 때 decode → 4대보험 비교/표시 로직은 전혀 안 바뀜.
+  const INS_KMAP = { yearMonth: "m", empId: "e", name: "n", rrn: "r", dept: "d", pension: "p", health: "h", care: "c", healthAdj: "a", careAdj: "b", insType: "t" };
+  const INS_KMAP_R = Object.keys(INS_KMAP).reduce((o, k) => { o[INS_KMAP[k]] = k; return o; }, {});
+  const INS_NUMK = { pension: 1, health: 1, care: 1, healthAdj: 1, careAdj: 1 };
+  function insCompactRow(row) {
+    const o = {};
+    Object.keys(row || {}).forEach(k => {
+      const v = row[k];
+      if (INS_NUMK[k] && (v === 0 || v === "0" || v == null)) return; // 0 값 숫자는 생략(복원 시 0)
+      if (v === "" || v == null) return;                              // 빈 문자열/누락 생략
+      o[INS_KMAP[k] || k] = v;
+    });
+    return o;
+  }
+  function insExpandRow(row) {
+    const o = { pension: 0, health: 0, care: 0, healthAdj: 0, careAdj: 0 };
+    Object.keys(row || {}).forEach(k => { o[INS_KMAP_R[k] || k] = row[k]; });
+    return o;
+  }
+  function insEncode(payload) {
+    if (!payload || typeof payload !== "object") return payload;
+    return {
+      _v: 2,
+      pub: (Array.isArray(payload.pub) ? payload.pub : []).map(insCompactRow),
+      pay: (Array.isArray(payload.pay) ? payload.pay : []).map(insCompactRow),
+      reasons: payload.reasons || {},
+      custom: payload.custom || {},
+      checked: payload.checked || {}
+    };
+  }
+  function insDecode(payload) {
+    if (!payload || typeof payload !== "object") return payload;
+    if (payload._v !== 2) return payload;                             // 옛 데이터(비압축)는 그대로
+    return {
+      pub: (Array.isArray(payload.pub) ? payload.pub : []).map(insExpandRow),
+      pay: (Array.isArray(payload.pay) ? payload.pay : []).map(insExpandRow),
+      reasons: payload.reasons || {},
+      custom: payload.custom || {},
+      checked: payload.checked || {}
+    };
+  }
   async function fetchAll() {
     if (!SUPA) throw new Error("Supabase 미설정");
     const { data, error } = await SUPA.from(SUPA_TABLE).select("collection,value");
@@ -398,8 +441,7 @@ const SheetDB = function () {
     return rowsToState(data);
   }
   let lastErr = null;
-  function jsonSize(v) {
-    try { return new Blob([JSON.stringify(v == null ? "" : v)]).size; } catch (e) { try { return JSON.stringify(v || "").length; } catch (_) { return 0; } }
+  function jsonSize(v) {    try { return new Blob([JSON.stringify(v == null ? "" : v)]).size; } catch (e) { try { return JSON.stringify(v || "").length; } catch (_) { return 0; } }
   }
   async function upsert(collection, value) {
     if (!SUPA) return false;
@@ -408,7 +450,7 @@ const SheetDB = function () {
       if (error) { lastErr = error; try { console.error("[Supabase 삭제 실패]", { collection: collection, code: error.code, message: error.message || String(error), details: error.details }); } catch (_) {} return false; }
       return true;
     }
-    const { error } = await SUPA.from(SUPA_TABLE).upsert({ collection: collection, value: value }, { onConflict: "collection" });
+    const { error } = await SUPA.from(SUPA_TABLE).upsert({ collection: collection, value: collection.indexOf("ins:") === 0 ? insEncode(value) : value }, { onConflict: "collection" });
     if (error) {
       lastErr = error;
       try {
@@ -683,7 +725,7 @@ const SheetDB = function () {
     // cl/ins/tk 는 키·월별로 나뉘어 저장되므로 합계만
     let clKb = 0, insKb = 0, tkKb = 0;
     Object.keys(STORE.cl || {}).forEach(k => clKb += kb(STORE.cl[k]));
-    Object.keys(STORE.ins || {}).forEach(k => insKb += kb(STORE.ins[k]));
+    Object.keys(STORE.ins || {}).forEach(k => insKb += kb(insEncode(STORE.ins[k])));
     Object.keys(STORE.tk || {}).forEach(k => tkKb += kb(STORE.tk[k]));
     if (tkKb) rows.push({ c: "tk(달력 업무, 월별 분산)", size: tkKb, cnt: Object.keys(STORE.tk || {}).length + "개월" });
     if (clKb) rows.push({ c: "cl(체크리스트, 키별 분산)", size: clKb, cnt: Object.keys(STORE.cl || {}).length });
