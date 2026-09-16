@@ -5046,15 +5046,39 @@ function PageHistory({
     if (fV2.length && fV2.indexOf(r.verify2Done ? "완료" : "미완료") < 0) return false;            // L열 2차 검증
     return true;
   }), [apiRows, fMonth, fWriter, fMgr, fRefl, fDept, fEmpId, fTarget, fContent, fV1, fV2]);
-  async function postAction(body) {
-    return fetch(apiUrl, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(body)
-    });
+  // 모든 시트 POST 를 '순차 큐'로 직렬화 → 동시 요청으로 행이 씹히는 것 방지.
+  //  응답(JSON)을 읽어 성공/실패를 확인하고, 명시적 실패/네트워크 오류 시 재시도(최대 3회).
+  const postQueueRef = useRef(Promise.resolve());
+  function postAction(body) {
+    const run = async () => {
+      let lastErr = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const res = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(body)
+          });
+          const txt = await res.text();
+          let data = null;
+          try { data = JSON.parse(txt); } catch (e) {}
+          if (data && data.success === false) {
+            lastErr = new Error(data.error || "서버 오류");
+            console.error("[업무이력 서버 실패]", { attempt: attempt + "/3", action: body.action, error: data.error });
+          } else {
+            return data || { success: true };
+          }
+        } catch (e) {
+          lastErr = e;
+          console.error("[업무이력 저장 실패·재시도]", { attempt: attempt + "/3", action: body.action, message: e && e.message || String(e) });
+        }
+        await new Promise(r => setTimeout(r, 500 * attempt)); // 지수 백오프
+      }
+      throw lastErr || new Error("업무이력 저장 실패");
+    };
+    const p = postQueueRef.current.then(run, run); // 앞 요청이 끝난 뒤 실행(직렬화)
+    postQueueRef.current = p.catch(() => {});       // 체인은 에러를 삼켜 다음 요청 진행
+    return p;
   }
   async function toggleV1(row) {
     const k = "v1_" + row.rowIndex;
@@ -5129,30 +5153,46 @@ function PageHistory({
       [k]: false
     }));
   }
+  // 급여반영월 입력에서 여러 월 추출: "2026.08, 2026.09" 나열 또는 "2026.08~2027.02" 범위 지원
+  function expandMonths(input) {
+    const s = String(input || "").trim();
+    if (!s) return [];
+    const norm = t => t.trim().replace(/[\/\-]/g, ".").replace(/\s/g, "");
+    // 범위(~ 또는 -) 처리
+    const rangeM = s.split(/~|―|—/);
+    if (rangeM.length === 2 && /^\d{4}\.\d{1,2}$/.test(norm(rangeM[0])) && /^\d{4}\.\d{1,2}$/.test(norm(rangeM[1]))) {
+      const [ay, am] = norm(rangeM[0]).split(".").map(Number);
+      const [by, bm] = norm(rangeM[1]).split(".").map(Number);
+      const out = [];
+      let y = ay, m = am, guard = 0;
+      while ((y < by || (y === by && m <= bm)) && guard++ < 60) {
+        out.push(y + "." + String(m).padStart(2, "0"));
+        m++; if (m > 12) { m = 1; y++; }
+      }
+      return out;
+    }
+    // 나열(쉼표/공백/줄바꿈)
+    return s.split(/[,\n]+/).map(norm).filter(Boolean);
+  }
   async function submitNewRow() {
     if (!newRow.targetName || !newRow.reflectMonth) return alert("급여반영월과 대상자는 필수입니다.");
+    const monthsToAdd = expandMonths(newRow.reflectMonth);
+    if (monthsToAdd.length === 0) return alert("급여반영월 형식을 확인해주세요. (예: 2026.08 또는 2026.08~2027.02)");
     setAddLoading(true);
+    // 각 월마다 같은 내용으로 행 구성 → 한 번의 batch 요청으로 전송(동시 요청 없음)
+    const rows = monthsToAdd.map(m => ({ ...newRow, reflectMonth: m }));
     try {
-      await postAction({
-        action: "append",
-        ...newRow
-      });
-      setApiRows(prev => [...prev, {
-        ...newRow,
-        rowIndex: prev.length + 2,
-        verify1Done: false,
-        verify1By: "",
-        verify1At: "",
-        verify2Done: false,
-        verify2By: "",
-        verify2At: ""
-      }]);
-      setNewRow({
-        ...EMPTY
-      });
+      const res = await postAction({ action: "append", rows: rows });
+      const appended = res && typeof res.appended === "number" ? res.appended : rows.length;
+      if (appended < rows.length) {
+        alert("일부만 저장되었습니다(" + appended + "/" + rows.length + "). 다시 시도해주세요.");
+      }
+      // ★ 낙관적 추가 대신, 시트에서 실제 저장된 내용을 다시 읽어와 화면 갱신(유령 행 방지)
+      fetchData();
+      setNewRow({ ...EMPTY });
       setShowAdd(false);
     } catch (e) {
-      alert("제출 실패: " + e.message);
+      alert("제출 실패: " + (e && e.message || e) + "\n(저장되지 않았습니다. 잠시 후 다시 시도해주세요.)");
     }
     setAddLoading(false);
   }
@@ -5405,13 +5445,13 @@ function PageHistory({
     key: c.key
   }, React.createElement("div", {
     className: "inp-lbl"
-  }, c.letter + "열 · " + c.label), React.createElement("input", {
+  }, c.letter + "열 · " + c.label + (c.key === "reflectMonth" ? " (여러 월: 2026.08~2027.02)" : "")), React.createElement("input", {
     className: "inp",
     style: {
       fontSize: 11,
       padding: "6px 9px"
     },
-    placeholder: c.label,
+    placeholder: c.key === "reflectMonth" ? "예: 2026.08~2027.02 또는 2026.08, 2026.09" : c.label,
     value: newRow[c.key] || "",
     onChange: e => setNewRow(p => ({
       ...p,
