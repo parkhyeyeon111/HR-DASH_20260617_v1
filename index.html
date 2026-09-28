@@ -7011,7 +7011,7 @@ function Page4Insurance({
     const f = e.target.files[0];
     if (!f) return;
     if (!payDept) {
-      alert("급여대장을 올릴 사업부를 먼저 선택해주세요. (DW · MS · SP · ST · PA · MT)");
+      alert("급여대장을 올릴 사업부를 먼저 선택해주세요. (DW · MS · SP · ST · PA · MT · CF)");
       e.target.value = "";
       return;
     }
@@ -7756,7 +7756,7 @@ function Page4Insurance({
     value: payDept,
     onChange: e => setPayDept(e.target.value),
     style: { fontSize: 11, padding: "4px 10px", border: "1px solid " + (payDept ? "#8B5CF6" : "#FCA5A5"), borderRadius: 8, background: "#fff", fontFamily: "inherit", color: "var(--text)", outline: "none", fontWeight: 600 }
-  }, React.createElement("option", { value: "" }, "사업부 선택"), ["DW", "MS", "SP", "ST", "PA", "MT"].map(d => React.createElement("option", { key: d, value: d }, d))), payDept && React.createElement("span", { style: { fontSize: 9, color: "#8B5CF6", fontWeight: 700 } }, "[" + payDept + "] 최신본 유지")), React.createElement("label", {
+  }, React.createElement("option", { value: "" }, "사업부 선택"), ["DW", "MS", "SP", "ST", "PA", "MT", "CF"].map(d => React.createElement("option", { key: d, value: d }, d))), payDept && React.createElement("span", { style: { fontSize: 9, color: "#8B5CF6", fontWeight: 700 } }, "[" + payDept + "] 최신본 유지")), React.createElement("label", {
     style: {
       display: "flex",
       flexDirection: "column",
