@@ -1055,6 +1055,36 @@ function genEmpTasks(emp) {
     note: ""
   }];
 }
+// ===== 공휴일 보정 =====
+//  주말(토·일) + 아래 공휴일 목록에 해당하면 정기 일정을 '직전 평일'로 당겨서 표시.
+//  ※ 음력 공휴일(설날·추석·부처님오신날)은 해마다 날짜가 바뀌므로, 연도가 바뀌면 아래 목록에 추가/수정하세요.
+const KR_HOLIDAYS = new Set([
+  // 2026
+  "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-03-01", "2026-03-02",
+  "2026-05-05", "2026-05-24", "2026-05-25", "2026-06-06", "2026-08-15", "2026-08-17",
+  "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03", "2026-10-05", "2026-10-09", "2026-12-25",
+  // 2027
+  "2027-01-01", "2027-02-06", "2027-02-07", "2027-02-08", "2027-02-09", "2027-03-01",
+  "2027-05-05", "2027-05-13", "2027-06-06", "2027-06-07", "2027-08-15", "2027-08-16",
+  "2027-09-14", "2027-09-15", "2027-09-16", "2027-10-03", "2027-10-04", "2027-10-09", "2027-12-25"
+]);
+function parseYMD(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ""));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+function isHolidayDate(dt) {
+  if (!dt) return false;
+  const dow = dt.getDay();
+  if (dow === 0 || dow === 6) return true;        // 일·토 주말
+  return KR_HOLIDAYS.has(fmt(dt));                 // 공휴일
+}
+// 휴일이면 직전 평일로 당김(최대 20일 역탐색)
+function prevBusinessDay(dt) {
+  const d = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  let g = 0;
+  while (isHolidayDate(d) && g++ < 20) d.setDate(d.getDate() - 1);
+  return d;
+}
 function expandRoutine(routine, existing, team) {
   const {
     id: rId,
@@ -1077,9 +1107,10 @@ function expandRoutine(routine, existing, team) {
   const res = [];
   const tIds = assignees === "all" ? (team || []).map(m => m.id) : Array.isArray(assignees) ? assignees : [];
   const addDate = dt => {
-    const due = fmt(dt);
+    const nominalDue = fmt(dt);                       // 명목 예정일(원래 지정 일자) — 키 기준(안정적)
+    const due = fmt(prevBusinessDay(dt));             // 실제 표시일 — 휴일이면 직전 평일로 당김
     tIds.forEach(mid => {
-      const k = `${rId}_${due}_${mid}`;
+      const k = `${rId}_${nominalDue}_${mid}`;        // ★ 키는 명목일 기준 → 휴일 보정/사용자 이동과 무관하게 고정
       if (exKeys.has(k)) return;
       if (SheetDB.isDeleted && SheetDB.isDeleted("rk:" + k)) return;   // 삭제된 정기 일정은 재생성 안 함
       res.push({
@@ -1096,6 +1127,7 @@ function expandRoutine(routine, existing, team) {
         dept: "",
         routineId: rId,
         routineKey: k,
+        nominalDue: nominalDue,
         isRoutine: true
       });
     });
@@ -9049,6 +9081,35 @@ function Dashboard() {
   }, [routines, team]);
   // 저장 실패 원인이던 tasks 비대화 해소: 창(과거6개월~미래9개월) 밖의 '자동 생성 정기 일정(isRoutine)'만 1회 정리 후 즉시 저장.
   //  → 사용자가 직접 적은 일정(isRoutine 아님)은 날짜와 무관하게 100% 보존.
+  // 기존 정기 일정 중 '휴일에 찍혀 있고 사용자가 안 옮긴 것'만 직전 평일로 1회 보정.
+  //  (사용자가 달력에서 옮긴 건 due≠명목일 이므로 건드리지 않음)
+  const holiShiftRef = useRef(false);
+  useEffect(() => {
+    if (holiShiftRef.current) return;
+    const arr = tasks || [];
+    if (arr.length === 0) return;
+    holiShiftRef.current = true;
+    let changed = false;
+    const next = arr.map(t => {
+      if (!t || !t.isRoutine) return t;
+      // 명목일: 필드 우선, 없으면 routineKey 에서 추출
+      let nominal = t.nominalDue;
+      if (!nominal && t.routineKey) { const m = /_(\d{4}-\d{2}-\d{2})_/.exec(t.routineKey); if (m) nominal = m[1]; }
+      if (!nominal) nominal = t.due;
+      if (String(t.due) !== String(nominal)) return t;       // 사용자가 옮김 → 유지
+      const nd = parseYMD(nominal);
+      if (!nd) return t;
+      const shifted = fmt(prevBusinessDay(nd));
+      if (shifted === nominal) return t;                      // 휴일 아님
+      changed = true;
+      return { ...t, due: shifted, nominalDue: nominal };     // 휴일 → 직전 평일
+    });
+    if (changed) {
+      tasksRef.current = next;
+      setTasks(next);
+      try { SheetDB.saveTasks(next); } catch (e) {}
+    }
+  }, [tasks]);
   const prunedRef = useRef(false);
   useEffect(() => {
     if (prunedRef.current) return;
